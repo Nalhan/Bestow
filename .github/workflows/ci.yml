@@ -9,7 +9,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Lua 5.1
         run: |
@@ -26,7 +26,7 @@ jobs:
         run: python3 scripts/package.py --version ci
 
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Bestow-ci
           path: |
