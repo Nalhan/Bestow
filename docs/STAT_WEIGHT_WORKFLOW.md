@@ -176,6 +176,25 @@ talentModifiers = {
 Tooltip-derived values must be verified in game. Record the spell ID, rank,
 unmodified magnitude, talent assumptions, and verification status.
 
+### Catalog tooltip dump
+
+Run `/bestow tooltips` out of combat. Bestow queries every configured spell ID
+through the 3.3.5 client tooltip API and opens a selected, copyable TSV. Save
+that text as UTF-8 and generate the review artifacts with:
+
+```text
+python scripts/extract_buff_effects.py --tooltip-tsv <path>
+```
+
+The script writes:
+
+- `docs/buff_spell_tooltips.csv`, preserving the raw tooltip evidence;
+- `docs/buff_effect_values.csv`, containing parsed measurable components and
+  explicit review status.
+
+Rows that cannot be parsed remain `needs_review`; no value may be inferred
+merely from a family name or curated provider tier.
+
 ## Utility calculation
 
 For recipient spec `s` and a resolved family/rank `f`, first determine every

@@ -194,7 +194,7 @@ SlashCmdList.BESTOW = function(message)
   local command, rest = string.match(message or "", "^(%S*)%s*(.-)$")
   command = string.lower(command or "")
   if command == "" or command == "help" then
-    CBC:Print("/bestow assignments | config | dump | rescan | reset | show | hide")
+    CBC:Print("/bestow assignments | config | dump | tooltips | rescan | reset | show | hide")
     CBC:Print("/bestow pref category essential|useful|marginal|none")
   elseif command == "assignments" or command == "matrix" then
     if CBC.ToggleAssignmentPanel then CBC:ToggleAssignmentPanel() end
@@ -202,6 +202,8 @@ SlashCmdList.BESTOW = function(message)
     if CBC.OpenOptions then CBC:OpenOptions() end
   elseif command == "dump" then
     if CBC.ShowDiagnostics then CBC:ShowDiagnostics() end
+  elseif command == "tooltips" then
+    if CBC.ShowSpellTooltipDump then CBC:ShowSpellTooltipDump() end
   elseif command == "rescan" then
     CBC:ScanSpellbook()
     CBC:BroadcastState()

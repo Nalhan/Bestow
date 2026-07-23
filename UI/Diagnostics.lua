@@ -50,7 +50,7 @@ function CBC:CreateDiagnostics()
   frame:SetScript("OnDragStart",function(self) self:StartMoving() end)
   frame:SetScript("OnDragStop",function(self) self:StopMovingOrSizing() end)
   self.Pixel:Backdrop(frame,0.90); frame:Hide()
-  local title=frame:CreateFontString(nil,"OVERLAY"); title:SetPoint("TOPLEFT",12,-10); self:ApplyFont(title,13,""); title:SetText("Bestow Diagnostics")
+  local title=frame:CreateFontString(nil,"OVERLAY"); title:SetPoint("TOPLEFT",12,-10); self:ApplyFont(title,13,""); title:SetText("Bestow Diagnostics"); frame.title=title
   self:CreateCloseButton(frame)
   local scroll=CreateFrame("ScrollFrame","BestowDiagnosticScroll",frame)
   scroll:SetPoint("TOPLEFT",12,-38); scroll:SetPoint("BOTTOMRIGHT",-12,12)
@@ -66,12 +66,76 @@ function CBC:CreateDiagnostics()
   scroll:SetScrollChild(edit); frame.edit=edit
 end
 
-function CBC:ShowDiagnostics()
+function CBC:ShowDiagnosticText(title, text)
   local frame = self.diagnosticFrame
-  local text = self:BuildDiagnosticText()
+  frame.title:SetText(title)
   frame.edit:SetText(text)
   local _, lines = string.gsub(text, "\n", "\n")
   frame.edit:SetHeight(math.max(480, (lines + 2) * 13))
   frame.edit:SetFocus(); frame.edit:HighlightText()
   frame:Show()
+end
+
+function CBC:ShowDiagnostics()
+  self:ShowDiagnosticText("Bestow Diagnostics", self:BuildDiagnosticText())
+end
+
+local function TSV(value)
+  value = tostring(value or "")
+  value = string.gsub(value, "[\r\n\t]+", " ")
+  value = string.gsub(value, "%s+", " ")
+  return value
+end
+
+function CBC:GetCatalogSpellTooltip(spellID)
+  if not self.spellDumpTooltip then
+    self.spellDumpTooltip = CreateFrame("GameTooltip", "BestowSpellDumpTooltip", UIParent, "GameTooltipTemplate")
+    self.spellDumpTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+  end
+  local tooltip = self.spellDumpTooltip
+  tooltip:ClearLines()
+  tooltip:SetHyperlink("spell:" .. spellID)
+  local parts = {}
+  for index = 1, tooltip:NumLines() do
+    local left = _G["BestowSpellDumpTooltipTextLeft" .. index]
+    local right = _G["BestowSpellDumpTooltipTextRight" .. index]
+    local leftText = left and left:GetText()
+    local rightText = right and right:GetText()
+    if leftText and leftText ~= "" then parts[#parts+1] = leftText end
+    if rightText and rightText ~= "" then parts[#parts+1] = rightText end
+  end
+  tooltip:Hide()
+  return table.concat(parts, " / ")
+end
+
+function CBC:BuildSpellTooltipDump()
+  local lines = {"spellID\tresolvedName\trank\ttooltip"}
+  local seen = {}
+  for _, categoryKey in ipairs(self.CategoryOrder) do
+    local category = self.Categories[categoryKey]
+    local familyKeys = {}
+    for familyKey in pairs(category.variants) do familyKeys[#familyKeys+1] = familyKey end
+    table.sort(familyKeys)
+    for _, familyKey in ipairs(familyKeys) do
+      local family = category.variants[familyKey]
+      for _, form in ipairs({"single", "greater"}) do
+        local ids = form == "single" and family.singleIDs or family.greaterIDs
+        for _, spellID in ipairs(ids) do
+          if not seen[spellID] then
+            seen[spellID] = true
+            local name, rank = GetSpellInfo(spellID)
+            local tooltip = self:GetCatalogSpellTooltip(spellID)
+            lines[#lines+1] = table.concat({
+              TSV(spellID), TSV(name), TSV(rank), TSV(tooltip),
+            }, "\t")
+          end
+        end
+      end
+    end
+  end
+  return table.concat(lines, "\n")
+end
+
+function CBC:ShowSpellTooltipDump()
+  self:ShowDiagnosticText("Bestow Spell Tooltip Dump", self:BuildSpellTooltipDump())
 end

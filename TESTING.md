@@ -66,3 +66,11 @@ If a file must be temporarily excluded, comment its line in
 
 Blood Mage uses the client token `SONOFARUGAL`. Sanguinary Offering and
 Bloodsoaked Offering should appear as active capabilities for that class.
+
+Run `/bestow tooltips` out of combat to open a copyable TSV containing the
+client tooltip for every spell ID in the catalog. Save the selected text as a
+UTF-8 `.tsv` file and process it with:
+
+```text
+python scripts\extract_buff_effects.py --tooltip-tsv <path>
+```

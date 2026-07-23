@@ -1,0 +1,315 @@
+﻿category,family,provider,form,rank_index,spell_id,resolved_name,tooltip,dump_source
+strength,honor,GUARDIAN,single,1,300856,,,
+strength,honor,GUARDIAN,single,2,301228,,,
+strength,honor,GUARDIAN,single,3,301229,,,
+strength,honor,GUARDIAN,single,4,301230,,,
+strength,honor,GUARDIAN,single,5,301231,,,
+strength,honor,GUARDIAN,single,6,301232,,,
+strength,honor,GUARDIAN,greater,1,680280,,,
+strength,riteOfPower,REAPER,single,1,578126,,,
+strength,riteOfPower,REAPER,single,2,578127,,,
+strength,riteOfPower,REAPER,single,3,578128,,,
+strength,riteOfPower,REAPER,single,4,578129,,,
+strength,riteOfPower,REAPER,greater,1,578130,,,
+strength,markOfKorthazz,FLESHWARDEN,single,1,706589,Mark of Korth'azz,"Mark of Korth'azz 40 yd range Instant Mark an ally with the power of Korth’azz, increasing Strength by 3 and Fire Resistance by 5 for 30 min. ID 706589",SpellDumper.lua
+strength,markOfKorthazz,FLESHWARDEN,single,2,707341,Mark of Korth'azz,"Mark of Korth'azz 40 yd range Instant Mark an ally with the power of Korth’azz, increasing Strength by 27 and Fire Resistance by 23 for 30 min. ID 707341",SpellDumper.lua
+strength,markOfKorthazz,FLESHWARDEN,single,3,707342,Mark of Korth'azz,"Mark of Korth'azz 40 yd range Instant Mark an ally with the power of Korth’azz, increasing Strength by 33 and Fire Resistance by 30 for 30 min. ID 707342",SpellDumper.lua
+strength,markOfKorthazz,FLESHWARDEN,single,4,707343,Mark of Korth'azz,"Mark of Korth'azz 40 yd range Instant Mark an ally with the power of Korth’azz, increasing Strength by 43 and Fire Resistance by 35 for 30 min. ID 707343",SpellDumper.lua
+strength,markOfKorthazz,FLESHWARDEN,single,5,707344,Mark of Korth'azz,"Mark of Korth'azz 40 yd range Instant Mark an ally with the power of Korth’azz, increasing Strength by 61 and Fire Resistance by 43 for 30 min. ID 707344",SpellDumper.lua
+strength,markOfKorthazz,FLESHWARDEN,single,6,707345,Mark of Korth'azz,"Mark of Korth'azz 40 yd range Instant Mark an ally with the power of Korth’azz, increasing Strength by 77 and Fire Resistance by 54 for 30 min. ID 707345",SpellDumper.lua
+strength,markOfKorthazz,FLESHWARDEN,greater,1,680300,Greater Mark of Korth’azz,"Greater Mark of Korth’azz 40 yd range Instant Mark nearby party and raid members with the power of Korth'azz, increasing their Strengthby 77 and Fire Resistance by 60 for 30 min. ID 680300",SpellDumper.lua
+stamina,enduringShout,BARBARIAN,greater,1,680302,Enduring Shout,"Enduring Shout 19 Energy 40 yd range Instant Roar with enduring fury, increasing the Stamina of nearby allies by 20 for 30 min. ID 680302",SpellDumper.lua
+stamina,enduringShout,BARBARIAN,greater,2,681439,Enduring Shout,"Enduring Shout 19 Energy 40 yd range Instant Roar with enduring fury, increasing the Stamina of nearby allies by 32 for 30 min. ID 681439",SpellDumper.lua
+stamina,enduringShout,BARBARIAN,greater,3,681440,Enduring Shout,"Enduring Shout 19 Energy 40 yd range Instant Roar with enduring fury, increasing the Stamina of nearby allies by 43 for 30 min. ID 681440",SpellDumper.lua
+stamina,enduringShout,BARBARIAN,greater,4,681441,Enduring Shout,"Enduring Shout 19 Energy 40 yd range Instant Roar with enduring fury, increasing the Stamina of nearby allies by 54 for 30 min. ID 681441",SpellDumper.lua
+stamina,foulMandate,NECROMANCER,single,1,800199,,,
+stamina,foulMandate,NECROMANCER,single,2,573295,,,
+stamina,foulMandate,NECROMANCER,single,3,573296,,,
+stamina,foulMandate,NECROMANCER,single,4,573297,,,
+stamina,foulMandate,NECROMANCER,single,5,573298,,,
+stamina,foulMandate,NECROMANCER,greater,1,680286,,,
+stamina,riteOfResolve,REAPER,single,1,800198,,,
+stamina,riteOfResolve,REAPER,single,2,803310,,,
+stamina,riteOfResolve,REAPER,single,3,803311,,,
+stamina,riteOfResolve,REAPER,single,4,803312,,,
+stamina,riteOfResolve,REAPER,single,5,803313,,,
+stamina,riteOfResolve,REAPER,single,6,803314,,,
+stamina,riteOfResolve,REAPER,greater,1,680298,,,
+stamina,markOfRivendare,FLESHWARDEN,single,1,803667,Mark of Rivendare,Mark of Rivendare 40 yd range Instant Mark an ally with the guile of Rivendare increasing their Stamina by 32 and Frost Resistance by 25 for 30 min. ID 803667,SpellDumper.lua
+stamina,markOfRivendare,FLESHWARDEN,single,2,803668,Mark of Rivendare,Mark of Rivendare 40 yd range Instant Mark an ally with the guile of Rivendare increasing their Stamina by 43 and Frost Resistance by 35 for 30 min. ID 803668,SpellDumper.lua
+stamina,markOfRivendare,FLESHWARDEN,single,3,803669,Mark of Rivendare,Mark of Rivendare 40 yd range Instant Mark an ally with the guile of Rivendare increasing their Stamina by 43 and Frost Resistance by 45 for 30 min. ID 803669,SpellDumper.lua
+stamina,markOfRivendare,FLESHWARDEN,single,4,803670,Mark of Rivendare,Mark of Rivendare 40 yd range Instant Mark an ally with the guile of Rivendare increasing their Stamina by 54 and Frost Resistance by 60 for 30 min. ID 803670,SpellDumper.lua
+stamina,markOfRivendare,FLESHWARDEN,greater,1,803730,Greater Mark of Rivendare,Greater Mark of Rivendare 40 yd range Instant Mark nearby party and raid members with the guile of Rivendare increasing their Stamina by 54 and Frost Resistance by 60 for 30 min. ID 803730,SpellDumper.lua
+stamina,sanguinaryOffering,SONOFARUGAL,single,1,706630,,,
+stamina,sanguinaryOffering,SONOFARUGAL,single,2,707336,,,
+stamina,sanguinaryOffering,SONOFARUGAL,single,3,707337,,,
+stamina,sanguinaryOffering,SONOFARUGAL,single,4,707338,,,
+stamina,sanguinaryOffering,SONOFARUGAL,single,5,707339,,,
+stamina,sanguinaryOffering,SONOFARUGAL,single,6,707340,,,
+stamina,sanguinaryOffering,SONOFARUGAL,greater,1,680299,,,
+agility,brutalShout,BARBARIAN,greater,1,300857,Brutal Shout,"Brutal Shout 19 Energy 40 yd range Instant Roar with barbaric fury, increasing the Agilty of nearby party and raid members by 4 for 30 min. ID 300857",SpellDumper.lua
+agility,brutalShout,BARBARIAN,greater,2,300882,Brutal Shout,"Brutal Shout 19 Energy 40 yd range Instant Roar with barbaric fury, increasing the Agilty of nearby party and raid members by 8 for 30 min. ID 300882",SpellDumper.lua
+agility,brutalShout,BARBARIAN,greater,3,300883,Brutal Shout,"Brutal Shout 19 Energy 40 yd range Instant Roar with barbaric fury, increasing the Agilty of nearby party and raid members by 20 for 30 min. ID 300883",SpellDumper.lua
+agility,brutalShout,BARBARIAN,greater,4,300884,Brutal Shout,"Brutal Shout 19 Energy 40 yd range Instant Roar with barbaric fury, increasing the Agilty of nearby party and raid members by 36 for 30 min. ID 300884",SpellDumper.lua
+agility,brutalShout,BARBARIAN,greater,5,300885,Brutal Shout,"Brutal Shout 19 Energy 40 yd range Instant Roar with barbaric fury, increasing the Agilty of nearby party and raid members by 54 for 30 min. ID 300885",SpellDumper.lua
+agility,brutalShout,BARBARIAN,greater,6,300886,Brutal Shout,"Brutal Shout 19 Energy 40 yd range Instant Roar with barbaric fury, increasing the Agilty of nearby party and raid members by 77 for 30 min. ID 300886",SpellDumper.lua
+agility,brutalShout,BARBARIAN,greater,7,300887,Brutal Shout,"Brutal Shout 19 Energy 40 yd range Instant Roar with barbaric fury, increasing the Agilty of nearby party and raid members by 86 for 30 min. ID 300887",SpellDumper.lua
+agility,illidariIntuition,DEMONHUNTER,single,1,800212,,,
+agility,illidariIntuition,DEMONHUNTER,single,2,501326,,,
+agility,illidariIntuition,DEMONHUNTER,single,3,501327,,,
+agility,illidariIntuition,DEMONHUNTER,single,4,501328,,,
+agility,illidariIntuition,DEMONHUNTER,single,5,501329,,,
+agility,illidariIntuition,DEMONHUNTER,single,6,501330,,,
+agility,illidariIntuition,DEMONHUNTER,single,7,501331,,,
+agility,illidariIntuition,DEMONHUNTER,single,8,501332,,,
+agility,illidariIntuition,DEMONHUNTER,single,9,501333,,,
+agility,illidariIntuition,DEMONHUNTER,single,10,501334,,,
+agility,illidariIntuition,DEMONHUNTER,single,11,501335,,,
+agility,illidariIntuition,DEMONHUNTER,single,12,501336,,,
+agility,illidariIntuition,DEMONHUNTER,greater,1,680308,,,
+agility,etchingOfTheDextrous,SPIRITMAGE,single,1,561237,,,
+agility,etchingOfTheDextrous,SPIRITMAGE,single,2,561238,,,
+agility,etchingOfTheDextrous,SPIRITMAGE,single,3,561239,,,
+agility,etchingOfTheDextrous,SPIRITMAGE,single,4,561240,,,
+agility,etchingOfTheDextrous,SPIRITMAGE,greater,1,561241,,,
+agility,giftOfZeal,MONK,single,1,706634,Gift of Zeal,"Gift of Zeal 40 yd range Instant Places a Gift on a friendly target, increasing Agility by 3 for 30 min. ID 706634",SpellDumper.lua
+agility,giftOfZeal,MONK,single,2,300916,Gift of Zeal,"Gift of Zeal 40 yd range Instant Places a Gift on a friendly target, increasing Agility by 8 for 30 min. ID 300916",SpellDumper.lua
+agility,giftOfZeal,MONK,single,3,300917,Gift of Zeal,"Gift of Zeal 40 yd range Instant Places a Gift on a friendly target, increasing Agility by 20 for 30 min. ID 300917",SpellDumper.lua
+agility,giftOfZeal,MONK,single,4,300918,Gift of Zeal,"Gift of Zeal 40 yd range Instant Places a Gift on a friendly target, increasing Agility by 36 for 30 min. ID 300918",SpellDumper.lua
+agility,giftOfZeal,MONK,single,5,300919,Gift of Zeal,"Gift of Zeal 40 yd range Instant Places a Gift on a friendly target, increasing Agility by 54 for 30 min. ID 300919",SpellDumper.lua
+agility,giftOfZeal,MONK,single,6,300923,Gift of Zeal,"Gift of Zeal 40 yd range Instant Places a Gift on a friendly target, increasing Agility by 77 for 30 min. ID 300923",SpellDumper.lua
+agility,giftOfZeal,MONK,single,7,300924,Gift of Zeal,"Gift of Zeal 40 yd range Instant Places a Gift on a friendly target, increasing Agility by 86 for 30 min. ID 300924",SpellDumper.lua
+agility,giftOfZeal,MONK,greater,1,680306,Greater Gift of Zeal,"Greater Gift of Zeal 30 yd range Instant Places an Oath on all raid and party members, increasing Agility by 77 for 30 min. ID 680306",SpellDumper.lua
+agility,inquisitorsEdict,WITCHHUNTER,single,1,706741,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,2,707351,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,3,707352,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,4,707353,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,5,707354,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,6,707355,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,7,707683,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,8,707678,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,9,707679,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,10,707680,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,11,707681,,,
+agility,inquisitorsEdict,WITCHHUNTER,single,12,707682,,,
+agility,inquisitorsEdict,WITCHHUNTER,greater,1,680303,,,
+agility,spiderPheromones,PROPHET,single,1,803177,Spider Pheromones,"Spider Pheromones 5 Mana 40 yd range Instant cast Inject an ally with spider pheromones, increasing their Agility by 6. Lasts 30 min. ID 803177",SpellDumper.lua
+agility,spiderPheromones,PROPHET,single,2,803306,Spider Pheromones,"Spider Pheromones 5 Mana 40 yd range Instant cast Inject an ally with spider pheromones, increasing their Agility by 20. Lasts 30 min. ID 803306",SpellDumper.lua
+agility,spiderPheromones,PROPHET,single,3,803307,Spider Pheromones,"Spider Pheromones 5 Mana 40 yd range Instant cast Inject an ally with spider pheromones, increasing their Agility by 28. Lasts 30 min. ID 803307",SpellDumper.lua
+agility,spiderPheromones,PROPHET,single,4,803308,Spider Pheromones,"Spider Pheromones 5 Mana 40 yd range Instant cast Inject an ally with spider pheromones, increasing their Agility by 36. Lasts 30 min. ID 803308",SpellDumper.lua
+agility,spiderPheromones,PROPHET,single,5,803309,Spider Pheromones,"Spider Pheromones 5 Mana 40 yd range Instant cast Inject an ally with spider pheromones, increasing their Agility by 61. Lasts 30 min. ID 803309",SpellDumper.lua
+agility,spiderPheromones,PROPHET,single,6,803650,Spider Pheromones,"Spider Pheromones 5 Mana 40 yd range Instant cast Inject an ally with spider pheromones, increasing their Agility by 77. Lasts 30 min. ID 803650",SpellDumper.lua
+agility,spiderPheromones,PROPHET,greater,1,680312,Greater Spider Pheromones,"Greater Spider Pheromones 17 Mana 40 yd range Instant cast Give your allies spider pheromones, increasing their Agility by 77. Lasts 30 min. Can be used in any form. ID 680312",SpellDumper.lua
+intellect,nozdormusWisdom,CHRONOMANCER,single,1,572391,Nozdormu's Wisdom,"Nozdormu's Wisdom 40 yd range Instant Share Nozdormu's Wisdom with an allied player, increasing their Intellect by 2 for 30 min. Only one Wisdom per Chronomancer can be active. ID 572391",SpellDumper.lua
+intellect,nozdormusWisdom,CHRONOMANCER,single,2,572392,Nozdormu's Wisdom,"Nozdormu's Wisdom 40 yd range Instant Share Nozdormu's Wisdom with an allied player, increasing their Intellect by 7 for 30 min. Only one Wisdom per Chronomancer can be active. ID 572392",SpellDumper.lua
+intellect,nozdormusWisdom,CHRONOMANCER,single,3,572393,Nozdormu's Wisdom,"Nozdormu's Wisdom 40 yd range Instant Share Nozdormu's Wisdom with an allied player, increasing their Intellect by 15 for 30 min. Only one Wisdom per Chronomancer can be active. ID 572393",SpellDumper.lua
+intellect,nozdormusWisdom,CHRONOMANCER,single,4,572394,Nozdormu's Wisdom,"Nozdormu's Wisdom 40 yd range Instant Share Nozdormu's Wisdom with an allied player, increasing their Intellect by 25 for 30 min. Only one Wisdom per Chronomancer can be active. ID 572394",SpellDumper.lua
+intellect,nozdormusWisdom,CHRONOMANCER,single,5,572395,Nozdormu's Wisdom,"Nozdormu's Wisdom 40 yd range Instant Share Nozdormu's Wisdom with an allied player, increasing their Intellect by 31 for 30 min. Only one Wisdom per Chronomancer can be active. ID 572395",SpellDumper.lua
+intellect,nozdormusWisdom,CHRONOMANCER,greater,1,572396,Greater Nozdormu's Wisdom,"Greater Nozdormu's Wisdom 40 yd range Instant Share Nozdormu's Wisdom with all party and raid members, increasing their Intellect by 31 for 30 min. ID 572396",SpellDumper.lua
+intellect,sealOfAlysrazor,PYROMANCER,single,1,800196,,,
+intellect,sealOfAlysrazor,PYROMANCER,single,2,802819,,,
+intellect,sealOfAlysrazor,PYROMANCER,single,3,802820,,,
+intellect,sealOfAlysrazor,PYROMANCER,single,4,802821,,,
+intellect,sealOfAlysrazor,PYROMANCER,single,5,802822,,,
+intellect,sealOfAlysrazor,PYROMANCER,greater,1,570170,,,
+intellect,celestialMind,STARCALLER,single,1,300255,,,
+intellect,celestialMind,STARCALLER,single,2,301222,,,
+intellect,celestialMind,STARCALLER,single,3,301223,,,
+intellect,celestialMind,STARCALLER,single,4,301224,,,
+intellect,celestialMind,STARCALLER,single,5,301225,,,
+intellect,celestialMind,STARCALLER,greater,1,680301,,,
+intellect,callOfTheStorm,STORMBRINGER,single,1,578311,,,
+intellect,callOfTheStorm,STORMBRINGER,single,2,578312,,,
+intellect,callOfTheStorm,STORMBRINGER,single,3,578313,,,
+intellect,callOfTheStorm,STORMBRINGER,single,4,578314,,,
+intellect,callOfTheStorm,STORMBRINGER,single,5,578315,,,
+intellect,callOfTheStorm,STORMBRINGER,greater,1,578316,,,
+spirit,chromiesWisdom,CHRONOMANCER,single,1,801523,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 10. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 801523",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,2,802827,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 16. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802827",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,3,802828,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 23. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802828",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,4,802829,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 40. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802829",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,5,802830,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 50. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802830",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,6,802831,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 80. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802831",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,7,802832,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 80. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802832",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,8,802833,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 80. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802833",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,single,9,802834,Chromie's Wisdom,"Chromie's Wisdom 30 yd range Instant Share Chromie's wisdom with an allied player, increasing their Spirit by 80. Lasts 30 min. Only one Wisdom per Chronomancer can be active. ID 802834",SpellDumper.lua
+spirit,chromiesWisdom,CHRONOMANCER,greater,1,680307,Greater Chromie's Wisdom,"Greater Chromie's Wisdom 30 yd range Instant Empowers nearby party and raid members, increasing their Spirit by 40. Lasts 30 min. ID 680307",SpellDumper.lua
+spirit,spiritWuju,WITCHDOCTOR,single,1,560294,Spirit Wuju,"Spirit Wuju 30 yd range Instant Imbue an ally with the spirit of Sen'jin for 30 min, increasing their Spirit by 3 and their magic resistances by 5. Hold SHIFT for more information ID 560294",SpellDumper.lua
+spirit,spiritWuju,WITCHDOCTOR,single,2,561140,Spirit Wuju,"Spirit Wuju 30 yd range Instant Imbue an ally with the spirit of Sen'jin for 30 min, increasing their Spirit by 17 and their magic resistances by 5. Hold SHIFT for more information ID 561140",SpellDumper.lua
+spirit,spiritWuju,WITCHDOCTOR,single,3,561141,Spirit Wuju,"Spirit Wuju 30 yd range Instant Imbue an ally with the spirit of Sen'jin for 30 min, increasing their Spirit by 23 and their magic resistances by 10. Hold SHIFT for more information ID 561141",SpellDumper.lua
+spirit,spiritWuju,WITCHDOCTOR,single,4,561142,Spirit Wuju,"Spirit Wuju 30 yd range Instant Imbue an ally with the spirit of Sen'jin for 30 min, increasing their Spirit by 40 and their magic resistances by 20. Hold SHIFT for more information ID 561142",SpellDumper.lua
+spirit,spiritWuju,WITCHDOCTOR,single,5,561143,Spirit Wuju,"Spirit Wuju 30 yd range Instant Imbue an ally with the spirit of Sen'jin for 30 min, increasing their Spirit by 50 and their magic resistances by 25. Hold SHIFT for more information ID 561143",SpellDumper.lua
+spirit,spiritWuju,WITCHDOCTOR,greater,1,680872,Greater Spirit Wuju,"Greater Spirit Wuju 30 yd range Instant Imbue all party and raid members with the spirit of Sen'jin for 30 min, increasing their Spirit by 40 and their magic resistances by 20. Hold SHIFT for more information ID 680872",SpellDumper.lua
+spirit,toxicPheromones,PROPHET,single,1,707689,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 28. ID 707689",SpellDumper.lua
+spirit,toxicPheromones,PROPHET,single,2,707690,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 37. ID 707690",SpellDumper.lua
+spirit,toxicPheromones,PROPHET,single,3,707691,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 49. ID 707691",SpellDumper.lua
+spirit,toxicPheromones,PROPHET,single,4,707692,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 62. ID 707692",SpellDumper.lua
+spirit,toxicPheromones,PROPHET,greater,1,712459,Greater Toxic Pheromones,"Greater Toxic Pheromones 10 Mana Instant cast Create a magic edict with an ally, increasing their spell power by 62. ID 712459",SpellDumper.lua
+spirit,bloodsoakedOffering,SONOFARUGAL,single,1,572400,,,
+spirit,bloodsoakedOffering,SONOFARUGAL,single,2,572401,,,
+spirit,bloodsoakedOffering,SONOFARUGAL,single,3,572402,,,
+spirit,bloodsoakedOffering,SONOFARUGAL,single,4,572403,,,
+spirit,bloodsoakedOffering,SONOFARUGAL,greater,1,572404,,,
+attackPower,primalInstinct,WILDWALKER,single,1,800197,,,
+attackPower,primalInstinct,WILDWALKER,single,2,803315,,,
+attackPower,primalInstinct,WILDWALKER,single,3,803316,,,
+attackPower,primalInstinct,WILDWALKER,single,4,803317,,,
+attackPower,primalInstinct,WILDWALKER,single,5,803318,,,
+attackPower,primalInstinct,WILDWALKER,single,6,803319,,,
+attackPower,primalInstinct,WILDWALKER,single,7,573349,,,
+attackPower,primalInstinct,WILDWALKER,greater,1,680310,,,
+attackPower,woodsmansAdaptation,RANGER,single,1,800266,,,
+attackPower,woodsmansAdaptation,RANGER,single,2,803320,,,
+attackPower,woodsmansAdaptation,RANGER,single,3,803321,,,
+attackPower,woodsmansAdaptation,RANGER,single,4,803322,,,
+attackPower,woodsmansAdaptation,RANGER,single,5,803323,,,
+attackPower,woodsmansAdaptation,RANGER,single,6,803324,,,
+attackPower,woodsmansAdaptation,RANGER,single,7,803666,,,
+attackPower,woodsmansAdaptation,RANGER,greater,1,680294,,,
+attackPower,devotionOfDawn,SUNCLERIC,single,1,572384,Devotion of Dawn,"Devotion of Dawn 30 yd range Instant Places a Devotion on the friendly target, increasing attack power by 35 for 30 min. Hold SHIFT for more information ID 572384",SpellDumper.lua
+attackPower,devotionOfDawn,SUNCLERIC,single,2,572385,Devotion of Dawn,"Devotion of Dawn 30 yd range Instant Places a Devotion on the friendly target, increasing attack power by 55 for 30 min. Hold SHIFT for more information ID 572385",SpellDumper.lua
+attackPower,devotionOfDawn,SUNCLERIC,single,3,572386,Devotion of Dawn,"Devotion of Dawn 30 yd range Instant Places a Devotion on the friendly target, increasing attack power by 85 for 30 min. Hold SHIFT for more information ID 572386",SpellDumper.lua
+attackPower,devotionOfDawn,SUNCLERIC,single,4,572387,Devotion of Dawn,"Devotion of Dawn 30 yd range Instant Places a Devotion on the friendly target, increasing attack power by 130 for 30 min. Hold SHIFT for more information ID 572387",SpellDumper.lua
+attackPower,devotionOfDawn,SUNCLERIC,single,5,572388,Devotion of Dawn,"Devotion of Dawn 30 yd range Instant Places a Devotion on the friendly target, increasing attack power by 185 for 30 min. Hold SHIFT for more information ID 572388",SpellDumper.lua
+attackPower,devotionOfDawn,SUNCLERIC,single,6,572389,Devotion of Dawn,"Devotion of Dawn 30 yd range Instant Places a Devotion on the friendly target, increasing attack power by 232 for 30 min. Hold SHIFT for more information ID 572389",SpellDumper.lua
+attackPower,devotionOfDawn,SUNCLERIC,greater,1,572390,Greater Devotion of Dawn,"Greater Devotion of Dawn 30 yd range Instant Places a Devotion on all raid and party members, increasing attack power by 232 for 30 min. Hold SHIFT for more information ID 572390",SpellDumper.lua
+attackPower,powerModule,TINKER,single,1,706742,,,
+attackPower,powerModule,TINKER,single,2,707346,,,
+attackPower,powerModule,TINKER,single,3,707347,,,
+attackPower,powerModule,TINKER,single,4,707348,,,
+attackPower,powerModule,TINKER,single,5,707349,,,
+attackPower,powerModule,TINKER,single,6,707350,,,
+attackPower,powerModule,TINKER,single,7,707688,,,
+attackPower,powerModule,TINKER,greater,1,680315,,,
+attackPower,powerWuju,WITCHDOCTOR,single,1,707671,,,
+attackPower,powerWuju,WITCHDOCTOR,single,2,707672,,,
+attackPower,powerWuju,WITCHDOCTOR,single,3,707673,,,
+attackPower,powerWuju,WITCHDOCTOR,single,4,707674,,,
+attackPower,powerWuju,WITCHDOCTOR,single,5,707675,,,
+attackPower,powerWuju,WITCHDOCTOR,single,6,707676,,,
+attackPower,powerWuju,WITCHDOCTOR,single,7,707677,,,
+attackPower,powerWuju,WITCHDOCTOR,greater,1,712458,,,
+attackPower,beetlePheromones,PROPHET,single,1,803651,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 105 and all primary stats by 4 for 30 min. Hold SHIFT for more information ID 803651,SpellDumper.lua
+attackPower,beetlePheromones,PROPHET,single,2,803652,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 150 and all primary stats by 6 for 30 min. Hold SHIFT for more information ID 803652,SpellDumper.lua
+attackPower,beetlePheromones,PROPHET,single,3,803653,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 195 and all primary stats by 6 for 30 min. Hold SHIFT for more information ID 803653,SpellDumper.lua
+attackPower,beetlePheromones,PROPHET,single,4,803654,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 240 and all primary stats by 12 for 30 min. Hold SHIFT for more information ID 803654,SpellDumper.lua
+attackPower,beetlePheromones,PROPHET,single,5,803655,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 285 and all primary stats by 12 for 30 min. Hold SHIFT for more information ID 803655,SpellDumper.lua
+attackPower,beetlePheromones,PROPHET,single,6,803656,,,
+attackPower,beetlePheromones,PROPHET,greater,1,803657,Greater Beetle Pheromones,Greater Beetle Pheromones 21 Mana 40 yd range Instant cast Increase all nearby party and raid member's armor by 285 and all primary stats by 12 for 30 min. Hold SHIFT for more information ID 803657,SpellDumper.lua
+spellPower,whispersOfCthun,CULTIST,single,1,572791,,,
+spellPower,whispersOfCthun,CULTIST,single,2,572819,,,
+spellPower,whispersOfCthun,CULTIST,single,3,572905,,,
+spellPower,whispersOfCthun,CULTIST,greater,1,573067,,,
+spellPower,grimMandate,NECROMANCER,single,1,572787,,,
+spellPower,grimMandate,NECROMANCER,single,2,572788,,,
+spellPower,grimMandate,NECROMANCER,single,3,572789,,,
+spellPower,grimMandate,NECROMANCER,greater,1,572790,,,
+spellPower,devotionOfRadiance,SUNCLERIC,single,1,575040,Devotion of Radiance,"Devotion of Radiance 30 yd range Instant Places a Devotion on the friendly target, increasing spell power by 28 for 30 min. Hold SHIFT for more information ID 575040",SpellDumper.lua
+spellPower,devotionOfRadiance,SUNCLERIC,single,2,575041,Devotion of Radiance,"Devotion of Radiance 30 yd range Instant Places a Devotion on the friendly target, increasing spell power by 37 for 30 min. Hold SHIFT for more information ID 575041",SpellDumper.lua
+spellPower,devotionOfRadiance,SUNCLERIC,single,3,575042,Devotion of Radiance,"Devotion of Radiance 30 yd range Instant Places a Devotion on the friendly target, increasing spell power by 49 for 30 min. Hold SHIFT for more information ID 575042",SpellDumper.lua
+spellPower,devotionOfRadiance,SUNCLERIC,single,4,575043,Devotion of Radiance,"Devotion of Radiance 30 yd range Instant Places a Devotion on the friendly target, increasing spell power by 62 for 30 min. Hold SHIFT for more information ID 575043",SpellDumper.lua
+spellPower,devotionOfRadiance,SUNCLERIC,single,5,575044,Devotion of Radiance,"Devotion of Radiance 30 yd range Instant Places a Devotion on the friendly target, increasing spell power by 73 for 30 min. Hold SHIFT for more information ID 575044",SpellDumper.lua
+spellPower,devotionOfRadiance,SUNCLERIC,greater,1,575045,Greater Devotion of Radiance,"Greater Devotion of Radiance 30 yd range Instant Places a Devotion on all raid and party members, increasing spell power by 62 for 30 min. Hold SHIFT for more information ID 575045",SpellDumper.lua
+spellPower,witchingEdict,WITCHHUNTER,single,1,707684,,,
+spellPower,witchingEdict,WITCHHUNTER,single,2,707685,,,
+spellPower,witchingEdict,WITCHHUNTER,single,3,707686,,,
+spellPower,witchingEdict,WITCHHUNTER,single,4,707687,,,
+spellPower,witchingEdict,WITCHHUNTER,greater,1,681442,,,
+spellPower,toxicPheromones,PROPHET,single,1,707689,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 28. ID 707689",SpellDumper.lua
+spellPower,toxicPheromones,PROPHET,single,2,707690,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 37. ID 707690",SpellDumper.lua
+spellPower,toxicPheromones,PROPHET,single,3,707691,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 49. ID 707691",SpellDumper.lua
+spellPower,toxicPheromones,PROPHET,single,4,707692,Toxic Pheromones,"Toxic Pheromones 10 Mana 40 yd range Instant cast Create a magic edict with an ally, increasing their spell power by 62. ID 707692",SpellDumper.lua
+spellPower,toxicPheromones,PROPHET,greater,1,712459,Greater Toxic Pheromones,"Greater Toxic Pheromones 10 Mana Instant cast Create a magic edict with an ally, increasing their spell power by 62. ID 712459",SpellDumper.lua
+spellPower,markOfBlaumeux,FLESHWARDEN,single,1,707693,Mark of Blaumeux,"Mark of Blaumeux 40 yd range Instant Mark an ally with the power of Blaumeux, increasing their spell power by 25 and Shadow Resist by 15 for 30 min. ID 707693",SpellDumper.lua
+spellPower,markOfBlaumeux,FLESHWARDEN,single,2,707694,Mark of Blaumeux,"Mark of Blaumeux 40 yd range Instant Mark an ally with the power of Blaumeux, increasing their spell power by 30 and Shadow Resist by 30 for 30 min. ID 707694",SpellDumper.lua
+spellPower,markOfBlaumeux,FLESHWARDEN,single,3,707695,Mark of Blaumeux,"Mark of Blaumeux 40 yd range Instant Mark an ally with the power of Blaumeux, increasing their spell power by 37 and Shadow Resist by 45 for 30 min. ID 707695",SpellDumper.lua
+spellPower,markOfBlaumeux,FLESHWARDEN,single,4,707696,Mark of Blaumeux,"Mark of Blaumeux 40 yd range Instant Mark an ally with the power of Blaumeux, increasing their spell power by 49 and Shadow Resist by 60 for 30 min. ID 707696",SpellDumper.lua
+spellPower,markOfBlaumeux,FLESHWARDEN,greater,1,712460,Greater Mark of Blaumeux,"Greater Mark of Blaumeux 40 yd range Instant Mark nearby party and raid members with the power of Blaumeux, increasing their spell power by 62. ID 712460",SpellDumper.lua
+percentStats,whispersOfNzoth,CULTIST,single,1,561386,,,
+percentStats,whispersOfNzoth,CULTIST,greater,1,561387,,,
+percentStats,devotionOfEmperors,SUNCLERIC,single,1,572552,Devotion of Emperors,"Devotion of Emperors 40 yd range Instant Places a Devotion on the friendly target, increasing total stats by 10% for 30 min. Hold SHIFT for more information ID 572552",SpellDumper.lua
+percentStats,devotionOfEmperors,SUNCLERIC,greater,1,572553,Greater Devotion of Emperors,"Greater Devotion of Emperors 40 yd range Instant Places a Devotion on all raid and party members, increasing total stats by 10% for 30 min. Hold SHIFT for more information ID 572553",SpellDumper.lua
+percentStats,crusadersOath,MONK,single,1,572629,Gift of Fervor,"Gift of Fervor 40 yd range Instant Places an Gift on the friendly target, increasing total stats by 10% for 30 min. ID 572629",SpellDumper.lua
+percentStats,crusadersOath,MONK,greater,1,572630,,,
+percentStats,etchingOfTheLeylines,SPIRITMAGE,single,1,561236,,,
+percentStats,etchingOfTheLeylines,SPIRITMAGE,greater,1,561242,,,
+mana,devotionOfGrace,SUNCLERIC,single,1,800852,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 5 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 800852",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,single,2,300858,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 10 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 300858",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,single,3,300859,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 15 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 300859",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,single,4,300862,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 20 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 300862",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,single,5,300863,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 25 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 300863",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,single,6,300864,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 30 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 300864",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,single,7,300865,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 33 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 300865",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,single,8,300866,Devotion of Grace,"Devotion of Grace 40 yd range Instant Places a Devotion on the friendly target, restoring 41 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 300866",SpellDumper.lua
+mana,devotionOfGrace,SUNCLERIC,greater,1,681160,Greater Devotion of Grace,"Greater Devotion of Grace 40 yd range Instant Places a Devotion on all raid and party members, restoring 33 mana every 5 seconds and reducing their costs by 5% for 30 min. Hold SHIFT for more information ID 681160",SpellDumper.lua
+mana,etchingOfTheMagi,SPIRITMAGE,single,1,560295,,,
+mana,etchingOfTheMagi,SPIRITMAGE,greater,1,561243,,,
+mana,resourcefulWuju,WITCHDOCTOR,single,1,578344,,,
+mana,resourcefulWuju,WITCHDOCTOR,greater,1,800195,,,
+mana,whispersOfYshaarj,CULTIST,single,1,561389,,,
+mana,whispersOfYshaarj,CULTIST,single,2,561390,,,
+mana,whispersOfYshaarj,CULTIST,single,3,561391,,,
+mana,whispersOfYshaarj,CULTIST,greater,1,561392,,,
+mana,groveInstinct,WILDWALKER,single,1,572810,,,
+mana,groveInstinct,WILDWALKER,single,2,572811,,,
+mana,groveInstinct,WILDWALKER,single,3,572812,,,
+mana,groveInstinct,WILDWALKER,single,4,572813,,,
+mana,groveInstinct,WILDWALKER,single,5,572814,,,
+mana,groveInstinct,WILDWALKER,single,6,572815,,,
+mana,groveInstinct,WILDWALKER,single,7,572816,,,
+mana,groveInstinct,WILDWALKER,greater,1,572817,,,
+mana,sealOfAlar,PYROMANCER,single,1,803649,,,
+mana,sealOfAlar,PYROMANCER,single,2,803729,,,
+mana,sealOfAlar,PYROMANCER,single,3,807704,,,
+mana,sealOfAlar,PYROMANCER,single,4,807770,,,
+mana,sealOfAlar,PYROMANCER,single,5,808012,,,
+mana,sealOfAlar,PYROMANCER,greater,1,808060,,,
+mana,callOfTheWind,STORMBRINGER,single,1,804018,,,
+mana,callOfTheWind,STORMBRINGER,single,2,503319,,,
+mana,callOfTheWind,STORMBRINGER,single,3,503320,,,
+mana,callOfTheWind,STORMBRINGER,single,4,503321,,,
+mana,callOfTheWind,STORMBRINGER,single,5,503322,,,
+mana,callOfTheWind,STORMBRINGER,single,6,503323,,,
+mana,callOfTheWind,STORMBRINGER,greater,1,680291,,,
+mana,markOfZeliek,FLESHWARDEN,single,1,803671,Mark of Zeliek,"Mark of Zeliek 30 yd range Instant Empower an ally with the mark of Zeliek, reducing their resource costs by 5% and increasing their Arcane Resistance by 60. Lasts 30 min. ID 803671",SpellDumper.lua
+mana,markOfZeliek,FLESHWARDEN,greater,1,803731,Greater Mark of Zeliek,"Greater Mark of Zeliek 30 yd range Instant Empowers nearby party and raid members with the mark of Zeliek, reducing their resource costs by 5% and increasing their Arcane Resistance by 60. Lasts 30 min. ID 803731",SpellDumper.lua
+mana,manaModule,TINKER,single,1,803658,,,
+mana,manaModule,TINKER,single,2,803659,,,
+mana,manaModule,TINKER,single,3,803660,,,
+mana,manaModule,TINKER,single,4,803661,,,
+mana,manaModule,TINKER,single,5,803662,,,
+mana,manaModule,TINKER,single,6,803663,,,
+mana,manaModule,TINKER,single,7,803664,,,
+mana,manaModule,TINKER,greater,1,803665,,,
+armorStats,manariIntuition,DEMONHUNTER,single,1,523478,,,
+armorStats,manariIntuition,DEMONHUNTER,single,2,523479,,,
+armorStats,manariIntuition,DEMONHUNTER,single,3,523480,,,
+armorStats,manariIntuition,DEMONHUNTER,single,4,523481,,,
+armorStats,manariIntuition,DEMONHUNTER,single,5,523482,,,
+armorStats,manariIntuition,DEMONHUNTER,single,6,523483,,,
+armorStats,manariIntuition,DEMONHUNTER,single,7,523484,,,
+armorStats,manariIntuition,DEMONHUNTER,greater,1,523495,,,
+armorStats,earthenEndurance,WILDWALKER,single,1,570752,,,
+armorStats,earthenEndurance,WILDWALKER,single,2,570753,,,
+armorStats,earthenEndurance,WILDWALKER,single,3,570754,,,
+armorStats,earthenEndurance,WILDWALKER,single,4,570755,,,
+armorStats,earthenEndurance,WILDWALKER,greater,1,570756,,,
+armorStats,footpadsAdaptation,RANGER,single,1,523489,,,
+armorStats,footpadsAdaptation,RANGER,single,2,523490,,,
+armorStats,footpadsAdaptation,RANGER,single,3,523491,,,
+armorStats,footpadsAdaptation,RANGER,single,4,523492,,,
+armorStats,footpadsAdaptation,RANGER,single,5,523493,,,
+armorStats,footpadsAdaptation,RANGER,single,6,523494,,,
+armorStats,footpadsAdaptation,RANGER,greater,1,523513,,,
+armorStats,beetlePheromones,PROPHET,single,1,803651,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 105 and all primary stats by 4 for 30 min. Hold SHIFT for more information ID 803651,SpellDumper.lua
+armorStats,beetlePheromones,PROPHET,single,2,803652,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 150 and all primary stats by 6 for 30 min. Hold SHIFT for more information ID 803652,SpellDumper.lua
+armorStats,beetlePheromones,PROPHET,single,3,803653,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 195 and all primary stats by 6 for 30 min. Hold SHIFT for more information ID 803653,SpellDumper.lua
+armorStats,beetlePheromones,PROPHET,single,4,803654,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 240 and all primary stats by 12 for 30 min. Hold SHIFT for more information ID 803654,SpellDumper.lua
+armorStats,beetlePheromones,PROPHET,single,5,803655,Beetle Pheromones,Beetle Pheromones 7 Mana 40 yd range Instant cast Increase the friendly target's armor by 285 and all primary stats by 12 for 30 min. Hold SHIFT for more information ID 803655,SpellDumper.lua
+armorStats,beetlePheromones,PROPHET,single,6,803656,,,
+armorStats,beetlePheromones,PROPHET,greater,1,803657,Greater Beetle Pheromones,Greater Beetle Pheromones 21 Mana 40 yd range Instant cast Increase all nearby party and raid member's armor by 285 and all primary stats by 12 for 30 min. Hold SHIFT for more information ID 803657,SpellDumper.lua
+armorStats,knightsEdict,WITCHHUNTER,single,1,523485,,,
+armorStats,knightsEdict,WITCHHUNTER,single,2,523486,,,
+armorStats,knightsEdict,WITCHHUNTER,single,3,523487,,,
+armorStats,knightsEdict,WITCHHUNTER,single,4,523488,,,
+armorStats,knightsEdict,WITCHHUNTER,greater,1,523510,,,
