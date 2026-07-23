@@ -274,24 +274,40 @@ function CBC:BuildCompactRows()
   local playerGUID = UnitGUID("player")
   local targets = self.assignment.providerCategoryByTarget[playerGUID] or {}
   local greater = self.assignment.greaterByProvider[playerGUID]
+  local provider = self.providers[playerGUID]
   local actionByRecipient = {}
   for _, action in ipairs(self.actions) do if action.targetGUID then actionByRecipient[action.targetGUID] = action end end
   for recipientGUID, category in pairs(targets) do
-    if category ~= greater then
-      local member = self.rosterByGUID[recipientGUID]
-      local provider = self.providers[playerGUID]
-      local cap = provider and provider.categories and provider.categories[category]
-      if member and cap then
-        local state, aura = self:CoverageState(recipientGUID,category,cap,false)
-        rows[#rows+1] = {member=member,category=category,cap=cap,state=state,aura=aura,action=actionByRecipient[recipientGUID]}
+    local member = self.rosterByGUID[recipientGUID]
+    local cap = provider and provider.categories and provider.categories[category]
+    if member and cap then
+      local state, aura = self:CoverageState(recipientGUID,category,cap,category == greater)
+      local action = actionByRecipient[recipientGUID]
+      -- Every assigned recipient gets a stable row, including recipients
+      -- covered by our Greater default. A known single-target form makes the
+      -- row directly clickable even when no reminder is currently queued.
+      if not action and cap.single then
+        local id, name, rank, icon = self:GetCastSpell(cap, false)
+        local cell = self.assignment.cells[recipientGUID] and self.assignment.cells[recipientGUID][category]
+        if id and name then
+          action = {
+            priority=3,mass=false,category=category,cap=cap,
+            spellID=id,spellName=name,rank=rank,icon=icon,
+            unit=member.unit,targetGUID=recipientGUID,targetName=member.name,
+            state=state,dead=member.dead,online=member.online,
+            source=cell and cell.source,aura=aura,
+          }
+        end
       end
+      rows[#rows+1] = {
+        member=member,category=category,cap=cap,state=state,aura=aura,
+        action=action,delivery=category == greater and "greater" or "individual",
+      }
     end
   end
   table.sort(rows,function(a,b)
-    local ap = a.action and a.action.priority or 99
-    local bp = b.action and b.action.priority or 99
-    if ap ~= bp then return ap < bp end
-    return a.member.name < b.member.name
+    if a.member.name ~= b.member.name then return a.member.name < b.member.name end
+    return a.category < b.category
   end)
   return rows
 end
@@ -358,7 +374,8 @@ function CBC:UpdateCompact()
       else
         if row.icon.SetDesaturated then row.icon:SetDesaturated(false) end
         local duration = view.aura and self:FormatDuration(view.aura.expires) or ""
-        row.status:SetText(self.Categories[view.category].short .. "  " .. string.upper(view.state) .. (duration ~= "" and ("  "..duration) or ""))
+        local delivery = view.delivery == "greater" and "G" or "I"
+        row.status:SetText(self.Categories[view.category].short .. "  " .. delivery .. "  " .. string.upper(view.state) .. (duration ~= "" and ("  "..duration) or ""))
         SetStatusColor(row.status,view.state)
       end
       row:Show()

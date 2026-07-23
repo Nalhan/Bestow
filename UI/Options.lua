@@ -1,8 +1,8 @@
 local _, CBC = ...
 
 local displayModes = {
-  {value="HOVER", text="Hover (default)"},
-  {value="ALWAYS", text="Always expanded"},
+  {value="HOVER", text="Hover"},
+  {value="ALWAYS", text="Always expanded (default)"},
   {value="COLLAPSED", text="Always collapsed"},
 }
 
