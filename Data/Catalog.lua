@@ -48,7 +48,7 @@ CBC.Categories = {
       etchingOfTheDextrous=Family("SPIRITMAGE",{"Etching of the Dextrous"},{"Greater Etching of the Dextrous"},{561237,561238,561239,561240},{561241}),
       giftOfZeal=Family("MONK",{"Gift of Zeal"},{"Greater Gift of Zeal"},{706634,300916,300917,300918,300919,300923,300924},{680306}),
       inquisitorsEdict=Family("WITCHHUNTER",{"Inquisitor's Edict"},{"Greater Inquisitor's Edict"},{706741,707351,707352,707353,707354,707355,707683,707678,707679,707680,707681,707682},{680303}),
-      spiderPheromones=Family("PROPHET",{"Spider Pheromones"},{"Greater Spider Pheromones"},{803177,803306,803307,803308,803309,803650},nil,{singleOnly=true}),
+      spiderPheromones=Family("PROPHET",{"Spider Pheromones"},{"Greater Spider Pheromones"},{803177,803306,803307,803308,803309,803650},{680312}),
     },
   },
   intellect = {
