@@ -80,6 +80,10 @@ Each category also defines a canonical display icon. The effect category owns
 the compact label; provider-specific spell names never leak into space-limited
 assignment cells or cast rows.
 
+Templar's All Stats family uses different single and raid-wide names:
+`Gift of Fervor` is the individual 10% Stats cast and
+`Greater Crusader's Oath` is its Greater counterpart.
+
 ### Provider class
 
 The CoA class that owns a spell family, such as Guardian, Reaper, or Sun
