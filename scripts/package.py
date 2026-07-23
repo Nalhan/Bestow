@@ -24,6 +24,7 @@ RUNTIME_FILES = (
     "Assignments.lua",
     "Comms.lua",
     "README.md",
+    "LICENSE",
 )
 
 
