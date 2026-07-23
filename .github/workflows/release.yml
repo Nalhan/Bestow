@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.1
+
+      - name: Validate source
+        run: |
+          python3 scripts/validate.py
+          find . -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
+
+      - name: Build release package
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: python3 scripts/package.py --version "${RELEASE_VERSION#v}"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_VERSION" \
+            --title "Bestow ${RELEASE_VERSION#v}" \
+            --generate-notes \
+            dist/Bestow-*.zip \
+            dist/Bestow-*.sha256

@@ -1,0 +1,34 @@
+name: Validate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.1
+
+      - name: Validate repository
+        run: python3 scripts/validate.py
+
+      - name: Parse Lua 5.1 sources
+        run: find . -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
+
+      - name: Test package
+        run: python3 scripts/package.py --version ci
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bestow-ci
+          path: |
+            dist/Bestow-ci.zip
+            dist/Bestow-ci.zip.sha256

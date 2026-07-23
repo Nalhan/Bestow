@@ -1,0 +1,25 @@
+## Interface: 30300
+## Title: Bestow
+## Notes: Coordinates mutually exclusive group buffs for Conquest of Azeroth
+## Author: bread
+## Version: 0.1.0-alpha
+## SavedVariables: BestowDB, CoABuffCoordinatorDB
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+
+Core.lua
+Data\Classes.lua
+Data\Catalog.lua
+Data\Preferences.lua
+Spellbook.lua
+Roster.lua
+Auras.lua
+Assignments.lua
+Comms.lua
+UI\Pixel.lua
+UI\Options.lua
+UI\Compact.lua
+UI\Assignments.lua
+UI\Diagnostics.lua
