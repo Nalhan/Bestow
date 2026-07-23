@@ -5,23 +5,43 @@ local function IsRaid()
 end
 
 local function ProviderSort(a, b)
+  if a.score ~= b.score then return a.score > b.score end
   if a.cap.tier ~= b.cap.tier then return a.cap.tier < b.cap.tier end
   return (a.provider.name or a.provider.guid) < (b.provider.name or b.provider.guid)
 end
 
 function CBC:CategoryDemand(category)
   local demand = 0
-  for _, member in ipairs(self.roster) do demand = demand + self:GetPreference(member, category) end
+  for _, recipient in ipairs(self.roster) do
+    local best = 0
+    for _, choice in ipairs(self:GetProviderChoices(category, true, recipient)) do
+      if choice.score > best then best = choice.score end
+    end
+    demand = demand + best
+  end
   return demand
 end
 
-function CBC:GetProviderChoices(category, requireGreater)
+function CBC:GetProviderChoices(category, requireGreater, recipient)
   local choices = {}
   for guid, provider in pairs(self.providers) do
     local member = self.rosterByGUID[guid]
     local cap = provider.categories and provider.categories[category]
     if member and member.online and cap and (not requireGreater or cap.greater) then
-      choices[#choices+1] = {guid=guid,provider=provider,member=member,cap=cap}
+      local score, source
+      if recipient then
+        score, source = self:GetCapabilityScore(recipient, cap, requireGreater)
+      else
+        score = 0
+        for _, target in ipairs(self.roster) do
+          score = score + (self:GetCapabilityScore(target, cap, requireGreater) or 0)
+        end
+        source = "group"
+      end
+      choices[#choices+1] = {
+        guid=guid,provider=provider,member=member,cap=cap,
+        score=score or 0,scoreSource=source,
+      }
     end
   end
   table.sort(choices, ProviderSort)
@@ -85,14 +105,23 @@ function CBC:FillAvailableAssignments(member, cells, baseline)
     local providerMember = self.rosterByGUID[guid]
     if providerMember and providerMember.online and not occupiedProviders[guid] then
       for category, cap in pairs(provider.categories or {}) do
-        local preference = self:GetPreference(member, category)
         local baselineCategory = baseline[guid]
         local deliverable = cap.single or (category == baselineCategory and cap.greater)
-        if preference > 0 and not occupiedCategories[category] and deliverable then
+        local isBaseline = category == baselineCategory
+        local score = self:GetCapabilityScore(member, cap, isBaseline and cap.greater ~= nil) or 0
+        local baselineScore = 0
+        if baselineCategory and provider.categories[baselineCategory] then
+          local baselineCap = provider.categories[baselineCategory]
+          baselineScore = self:GetCapabilityScore(member, baselineCap, baselineCap.greater ~= nil) or 0
+        end
+        local gain = isBaseline and score or score - baselineScore
+        local threshold = tonumber(self.db.individualAssignmentThreshold) or 25
+        local worthwhile = isBaseline or not baselineCategory or gain >= threshold
+        if score > 0 and worthwhile and not occupiedCategories[category] and deliverable then
           candidates[#candidates+1] = {
             guid=guid,providerName=provider.name or guid,
-            category=category,cap=cap,preference=preference,
-            baseline=(category == baselineCategory) and 1 or 0,
+            category=category,cap=cap,score=score,gain=gain,
+            baseline=isBaseline and 1 or 0,
             order=self.Categories[category].order,
           }
         end
@@ -100,7 +129,7 @@ function CBC:FillAvailableAssignments(member, cells, baseline)
     end
   end
   table.sort(candidates, function(a,b)
-    if a.preference ~= b.preference then return a.preference > b.preference end
+    if a.score ~= b.score then return a.score > b.score end
     if a.cap.tier ~= b.cap.tier then return a.cap.tier < b.cap.tier end
     if a.baseline ~= b.baseline then return a.baseline > b.baseline end
     if a.order ~= b.order then return a.order < b.order end
@@ -392,7 +421,13 @@ function CBC:CycleLocalOverride(recipientGUID, delta)
   if not provider or not member then return false end
   local choices = {}
   for category, cap in pairs(provider.categories or {}) do
-    if cap.single then choices[#choices+1] = {category=category,weight=self:GetPreference(member,category),order=self.Categories[category].order} end
+    if cap.single then
+      choices[#choices+1] = {
+        category=category,
+        weight=self:GetCapabilityScore(member,cap,false) or 0,
+        order=self.Categories[category].order,
+      }
+    end
   end
   table.sort(choices, function(a,b)
     if a.weight ~= b.weight then return a.weight > b.weight end

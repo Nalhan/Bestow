@@ -5,7 +5,7 @@ _G.Bestow = CBC
 
 CBC.name = addonName or "Bestow"
 CBC.version = "0.1.0-alpha"
-CBC.protocol = 1
+CBC.protocol = 2
 CBC.prefix = "BESTOW1"
 CBC.modules = {}
 CBC.events = {}
@@ -31,6 +31,7 @@ local defaults = {
   font = "Friz Quadrata TT",
   session = nil,
   preferences = {},
+  individualAssignmentThreshold = 25,
 }
 
 local function CopyDefaults(dst, src)

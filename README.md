@@ -3,14 +3,16 @@
 Bestow coordinates mutually exclusive class buffs for Ascension's Conquest
 of Azeroth realm on the WoW 3.3.5 client.
 
-It discovers the effects each provider can cast, evaluates recipient
-specialization preferences, assigns raid-wide Greater buffs and party
+It discovers the effects each provider can cast, evaluates their exact
+tooltip-derived value with per-spec BisBeard stat weights, assigns raid-wide Greater buffs and party
 overrides, and presents the local caster with a secure one-click action queue.
 
 ## Current features
 
 - all ten tracked shared-effect categories;
 - all registered Conquest of Azeroth provider classes;
+- all 70 custom specialization stat-weight profiles;
+- recipient-specific 0-100 buff valuation with curated bonus-point hooks;
 - highest-known spell-rank discovery;
 - stronger/equivalent aura suppression;
 - automatic party assignments and raid-wide Greater assignments;
@@ -57,6 +59,15 @@ Validate the source tree:
 ```text
 python scripts/validate.py
 ```
+
+Refresh the reviewed BisBeard stat-weight snapshot:
+
+```text
+node scripts/extract_bisbeard_weights.mjs
+```
+
+This maintainer command records the resolved content-hashed source module and
+its SHA-256. Bestow never contacts BisBeard from the game client.
 
 Build a release archive:
 

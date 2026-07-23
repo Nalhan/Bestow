@@ -353,13 +353,14 @@ end
 function CBC:ShowProviderTooltip(owner, recipientGUID, category)
   GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
   GameTooltip:SetText(self.Categories[category].label)
-  local choices = self:GetProviderChoices(category, false)
+  local recipient = self.rosterByGUID[recipientGUID]
+  local choices = self:GetProviderChoices(category, false, recipient)
   for _, choice in ipairs(choices) do
     local _, _, _, icon = self:GetCastSpell(choice.cap, false)
     local marker = choice.guid == UnitGUID("player") and "|cffffffff[YOU]|r " or ""
     local cell = self.assignment.cells[recipientGUID] and self.assignment.cells[recipientGUID][category]
     if cell and cell.providerGUID == choice.guid then marker = marker .. "|cff4db8ff[ASSIGNED]|r " end
-    GameTooltip:AddLine((icon and ("|T"..icon..":16|t ") or "") .. marker .. choice.member.shortName .. "  Tier " .. choice.cap.tier,1,1,1)
+    GameTooltip:AddLine((icon and ("|T"..icon..":16|t ") or "") .. marker .. choice.member.shortName .. "  " .. choice.score .. "/100 (Tier " .. choice.cap.tier .. ")",1,1,1)
   end
   if InCombatLockdown and InCombatLockdown() then
     GameTooltip:AddLine("Assignments locked in combat", 1, 0.35, 0.3)

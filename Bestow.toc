@@ -12,7 +12,10 @@ Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 Core.lua
 Data\Classes.lua
 Data\Catalog.lua
+Data\StatWeights.lua
 Data\Effects.lua
+Data\BonusPoints.lua
+Data\Scoring.lua
 Data\Preferences.lua
 Spellbook.lua
 Roster.lua

@@ -68,13 +68,31 @@ function CBC:CreateOptions()
   AddCheck(panel, "revealExpiring", "Automatically reveal buffs nearing expiration", -166)
   AddCheck(panel, "showSpecs", "Show specialization names", -194)
 
+  local threshold = CreateFrame("Slider", "BestowIndividualThreshold", panel, "OptionsSliderTemplate")
+  threshold:SetPoint("TOPLEFT", 22, -236)
+  threshold:SetWidth(220); threshold:SetHeight(16)
+  threshold:SetMinMaxValues(0, 100); threshold:SetValueStep(5)
+  _G[threshold:GetName().."Low"]:SetText("0")
+  _G[threshold:GetName().."High"]:SetText("100")
+  local thresholdText = _G[threshold:GetName().."Text"]
+  self:ApplyFont(thresholdText, 10, "")
+  threshold:SetScript("OnValueChanged", function(self, value)
+    value = math.floor(value / 5 + 0.5) * 5
+    thresholdText:SetText("Minimum individual gain: " .. value)
+    if CBC.db and CBC.db.individualAssignmentThreshold ~= value then
+      CBC.db.individualAssignmentThreshold = value
+      CBC:Rebuild("individual threshold")
+    end
+  end)
+  panel.threshold = threshold
+
   local fontLabel = panel:CreateFontString(nil, "ARTWORK")
-  fontLabel:SetPoint("TOPLEFT", 18, -238)
+  fontLabel:SetPoint("TOPLEFT", 18, -292)
   self:ApplyFont(fontLabel, 11, "")
   fontLabel:SetText("Global font (LibSharedMedia)")
 
   local font = CreateFrame("Frame", "BestowFontMenu", panel, "UIDropDownMenuTemplate")
-  font:SetPoint("TOPLEFT", 4, -254)
+  font:SetPoint("TOPLEFT", 4, -308)
   UIDropDownMenu_SetWidth(font, 220)
   local fontText = _G[font:GetName() .. "Text"]
   if fontText then self:ApplyFont(fontText, 10, "") end
@@ -101,6 +119,7 @@ function CBC:CreateOptions()
   panel:SetScript("OnShow", function(self)
     UIDropDownMenu_SetSelectedValue(self.mode, CBC.db.showMode)
     UIDropDownMenu_SetSelectedValue(self.font, CBC.db.font)
+    self.threshold:SetValue(CBC.db.individualAssignmentThreshold)
     for key, check in pairs(self.checks) do check:SetChecked(CBC.db[key]) end
   end)
 

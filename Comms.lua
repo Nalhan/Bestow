@@ -83,10 +83,13 @@ function CBC:SendPreferences()
   local specID = self:GetLocalSpec()
   if not specID then return end
   local tokens = {}
+  local overrides = self.db.preferences and self.db.preferences[specID]
   for index, category in ipairs(self.CategoryOrder) do
-    tokens[#tokens+1] = index .. ":" .. self:GetPreference(self.rosterByGUID[UnitGUID("player")], category)
+    if overrides and overrides[category] ~= nil then
+      tokens[#tokens+1] = index .. ":" .. overrides[category]
+    end
   end
-  self:Send("P|" .. specID .. "|" .. table.concat(tokens,","))
+  self:Send("P|" .. specID .. "|" .. (#tokens > 0 and table.concat(tokens,",") or "-"))
 end
 
 function CBC:SendOverride(providerGUID, recipientGUID, category)
@@ -115,7 +118,9 @@ function CBC:OnAddonMessage(prefix, message, channel, sender)
   self.providers[senderMember.guid] = provider
   if kind == "H" then
     local version, specID = string.match(payload, "^(%d+)|(%d+)$")
-    if tonumber(version) == self.protocol then
+    provider.protocol = tonumber(version)
+    provider.protocolCompatible = provider.protocol == self.protocol
+    if provider.protocolCompatible then
       provider.addon, provider.provisional = true, false
       specID = tonumber(specID)
       if self.specsByID[specID] then
@@ -123,17 +128,19 @@ function CBC:OnAddonMessage(prefix, message, channel, sender)
       end
     end
   elseif kind == "C" then
+    if not provider.protocolCompatible then return end
     provider.addon, provider.provisional = true, false
     self:DecodeCapabilities(provider, payload)
   elseif kind == "P" then
+    if not provider.protocolCompatible then return end
     local specID, values = string.match(payload, "^(%d+)|(.+)$")
     specID = tonumber(specID)
     if self.specsByID[specID] then
-      provider.specID, provider.specName, provider.preferences = specID, self.specsByID[specID].name, {}
-      for token in string.gmatch(values or "", "[^,]+") do
+      provider.specID, provider.specName, provider.preferenceOverrides = specID, self.specsByID[specID].name, {}
+      for token in string.gmatch(values ~= "-" and values or "", "[^,]+") do
         local index, weight = string.match(token, "^(%d+):(%d+)$")
         local category = index and self.CategoryOrder[tonumber(index)]
-        if category then provider.preferences[category] = tonumber(weight) end
+        if category then provider.preferenceOverrides[category] = tonumber(weight) end
       end
     end
   elseif kind == "R" then

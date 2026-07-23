@@ -298,7 +298,7 @@ names `Son of Arugal` and `Bloodmage` resolve to the same class.
 ### 5.6 Recipient preferences
 
 - Preferences are keyed by numeric specialization ID when available.
-- Each spec provides stat weights plus explicit category multipliers/bonuses
+- Each spec provides stat weights plus explicit family/spell bonus points
   for survivability or utility that ordinary item weights do not capture.
 - The resolved effect utilities are normalized to integer scores from `0` to
   `100`; the score provides both ordering and eligibility.
@@ -306,8 +306,8 @@ names `Son of Arugal` and `Bloodmage` resolve to the same class.
 - A global category order is only the final deterministic tie-break.
 - Users can edit preferences.
 - Per-player manual overrides always beat spec preferences.
-- Addon users advertise their effective current-spec normalized scores and
-  preference-data version.
+- Addon users advertise only explicit current-spec category overrides; every
+  client calculates the reviewed source score locally.
 - For a recipient without an advertised preference, the coordinator applies
   its configured spec/class/role template.
 - Unknown specs must not block assignments.
@@ -398,8 +398,8 @@ reviewed bundled snapshot or user edits.
 ### 6.3 Demand score
 
 For each candidate family and eligible recipient, calculate utility from the
-family's realized stat deltas multiplied by that spec's stat weights, then
-apply explicit category multipliers/bonuses and normalize to `0..100`.
+family's realized stat deltas multiplied by that spec's stat weights, normalize
+the measurable value to `0..100`, then apply explicit bonus points.
 
 Category demand is the sum of the best available normalized utility for its
 eligible recipients. Zero contributes nothing. Exact ties use stable category
@@ -517,10 +517,12 @@ resistances, and all-resistance bonuses independently. Runtime scoring consumes
 these fields; it never reparses tooltip prose.
 
 BisBeard weights price ordinary throughput stats. Bestow separately stores
-curated per-spec unit weights for MP5, resource-cost reduction, Armor, and
-resistances. Every component contributes independently, so a family combining
-MP5 with cost reduction receives both values. Optional per-spec/family synergy
-bonuses are explicit, versioned review data and default to zero.
+curated per-spec family/spell bonus points for MP5, resource-cost reduction,
+Armor, resistances, and other utility not represented by those weights.
+Curators consider every itemized component when setting the total adjustment,
+so a family combining MP5 with cost reduction can receive more points than a
+pure MP5 family. Bonus points are explicit, versioned review data and default
+to zero.
 
 Roster member:
 

@@ -1,6 +1,6 @@
 # Stat-weight acquisition and buff valuation
 
-Status: Design workflow  
+Status: Implemented baseline
 Source inspected: `https://coa.bisbeard.com/`  
 Initial inspection date: 2026-07-23
 
@@ -51,7 +51,20 @@ Refresh procedure:
    - keys have the form `Class|Spec`;
    - values contain `role`, `anchors`, `anchorWeights`, and `weights`;
    - the expected CoA dataset currently contains 70 entries.
-8. Export the selected records to stable JSON/CSV owned by Bestow.
+8. Export the selected records to stable Lua/JSON/CSV owned by Bestow.
+
+Bestow automates these steps with:
+
+```text
+node scripts/extract_bisbeard_weights.mjs
+```
+
+The command generates:
+
+- `Data/StatWeights.lua`, the 70-profile runtime snapshot keyed by spec ID;
+- `docs/bisbeard_stat_weights.csv`, the review/edit interchange table;
+- `docs/bisbeard_stat_weights_source.json`, the resolved URLs, retrieval time,
+  profile count, and SHA-256.
 
 If dynamic import stops working, a parser may extract the same object from the
 module text, but this is a fallback because minified local variable names are
@@ -216,16 +229,24 @@ baseUtility(s, f) =
   )
 ```
 
-Then apply explicit category/spec adjustments:
+Bestow normalizes the measurable tooltip-derived value:
 
 ```text
-adjustedUtility(s, f) =
-  baseUtility(s, f)
-  * categoryMultiplier(s, category(f))
-  + categoryBonus(s, category(f))
+baseScore(s, f) =
+  round(100 * baseUtility(s, f) / maxUtility(s))
 ```
 
-Defaults are multiplier `1.0` and bonus `0`.
+Finally, it applies an explicit family- or spell-level point adjustment:
+
+```text
+score(s, f) =
+  clamp(baseScore(s, f) + bonusPoints(s, f), 0, 100)
+```
+
+`Data/BonusPoints.lua` owns these adjustments. Every special-effect family
+has an explicit `bonusPoints` field. It may define a common value and numeric
+spec-ID overrides; exact spell-ID entries can override the family value.
+Defaults are zero until reviewed.
 
 Examples of adjustments:
 
@@ -238,26 +259,30 @@ Examples of adjustments:
 - resistance or secondary utility may use a documented bonus when no
   compatible BisBeard weight exists.
 
-Adjustments are data, keyed by spec ID and category. They must never be hidden
+Adjustments are data, keyed by spec ID and family/spell. They must never be hidden
 inside solver code.
 
-Special components are additive by default. For example, Devotion of Grace
-contributes both its MP5 utility and its resource-cost-reduction utility, and
-therefore outranks a pure MP5 family of equal magnitude for a spec that values
-cost reduction. A versioned per-spec/family synergy bonus may be added only
-when testing shows that the combined effect is materially non-linear. Its
-default is zero, and every non-zero value requires a review note.
+Special components are itemized independently in `Data/Effects.lua`. Curated
+bonus points should reflect all of them: for example, Devotion of Grace's
+family adjustment should include both its MP5 and resource-cost-reduction
+value, allowing it to outrank a pure MP5 family for a spec that values cost
+reduction. A versioned per-spec/family synergy bonus may be added only when
+testing shows that the combination is materially non-linear. Its default is
+zero, and every non-zero value requires a review note.
 
 ## Conversion to Bestow's 0–100 scale
 
 Raw BisBeard weights are anchor-relative. Bestow exposes a normalized score:
 
 ```text
+baseScore(s, f) =
+  round(100 * baseUtility(s, f) / maxUtility(s))
+
 score(s, f) =
-  round(100 * adjustedUtility(s, f) / maxUtility(s))
+  clamp(baseScore(s, f) + bonusPoints(s, f), 0, 100)
 ```
 
-`maxUtility(s)` is the greatest adjusted utility among the tracked,
+`maxUtility(s)` is the greatest base utility among the tracked,
 reference-rank buff families evaluated for that spec. Clamp the result to
 `0..100`.
 
@@ -266,8 +291,7 @@ Keep the following values in generated data for auditing:
 - source stat weights;
 - realized/reference stat deltas;
 - base utility;
-- multiplier and bonus;
-- adjusted utility;
+- bonus points;
 - normalized score.
 
 Provider effectiveness is recipient-dependent after this change. A family is
@@ -311,3 +335,20 @@ Refresh it:
 
 The source is public application data, not a documented API. Extraction
 failures must leave the last reviewed snapshot intact.
+
+## Runtime implementation notes
+
+`Data/Scoring.lua` computes both the raw and normalized values. Flat primary
+stats, Attack Power, Spell Power, Armor, flat All Stats, and percentage All
+Stats are currently measurable. Generic Attack Power uses the greater of the
+melee/ranged Attack Power weights so hybrid profiles are not double-counted;
+Spell Power does the same across spell-damage and healing aliases.
+
+Percentage All Stats uses the recipient unit's base stats when the client
+exposes them. A documented 100-per-primary-stat reference profile is used when
+unit data is unavailable, and diagnostics marks that result as estimated.
+
+MP5, resource-cost reduction, resistance, and other effects without a
+compatible BisBeard weight remain represented in the effect table and are
+valued through `Data/BonusPoints.lua`. Until a non-zero bonus is curated, the
+legacy spec preference is retained as a safe assignment fallback.

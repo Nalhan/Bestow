@@ -2,6 +2,9 @@ local _, CBC = ...
 
 local function BetterAura(candidate, current)
   if not current then return true end
+  if candidate.score and current.score and candidate.score ~= current.score then
+    return candidate.score > current.score
+  end
   if candidate.tier ~= current.tier then return candidate.tier < current.tier end
   local candidateLeft = candidate.expires == 0 and math.huge or candidate.expires
   local currentLeft = current.expires == 0 and math.huge or current.expires
@@ -32,6 +35,11 @@ function CBC:ScanAuras()
             duration=duration or 0,expires=expires or 0,caster=caster,
             casterGUID=casterGUID,casterName=casterName,spellID=spellID,
           }
+          local effect = spellID and self:GetSpellEffect(spellID)
+          if effect then
+            aura.score, aura.baseScore, aura.rawValue, aura.bonusPoints =
+              self:GetNormalizedEffectScore(member.specID, effect, member.unit, match.family, spellID)
+          end
           if BetterAura(aura, unitCoverage[match.category]) then
             unitCoverage[match.category] = aura
           end
@@ -61,9 +69,23 @@ end
 function CBC:CoverageState(recipientGUID, category, capability, greater)
   local aura = self:GetCoverage(recipientGUID, category)
   if not aura then return "missing", nil end
+  local ours = aura.casterGUID == UnitGUID("player")
+  local sameLocalFamily = capability and ours and aura.family == capability.family
+  if capability and not sameLocalFamily then
+    local spellID = greater and capability.greater or capability.single
+    local effect = greater and capability.greaterEffect or capability.singleEffect
+    local proposedScore = effect and self:GetNormalizedEffectScore(
+      self.rosterByGUID[recipientGUID] and self.rosterByGUID[recipientGUID].specID,
+      effect,
+      self.rosterByGUID[recipientGUID] and self.rosterByGUID[recipientGUID].unit,
+      capability.family,
+      spellID
+    )
+    if proposedScore and aura.score and aura.score > proposedScore then return "stronger", aura end
+    if proposedScore and aura.score and aura.score < proposedScore then return "weaker", aura end
+  end
   if capability and aura.tier > capability.tier then return "weaker", aura end
   if capability and aura.tier < capability.tier then return "stronger", aura end
-  local ours = aura.casterGUID == UnitGUID("player")
   -- CoA sometimes applies a base aura ID for a higher-rank cast. Never turn a
   -- freshly observed local cast back into an upgrade reminder on ID alone.
   if capability and aura.family == capability.family and not ours and aura.casterGUID then

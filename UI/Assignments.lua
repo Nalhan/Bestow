@@ -12,20 +12,23 @@ function CBC:OpenProviderMenu(anchor, category, recipientGUID, isHeader)
     self:Print("Only raid leaders/assistants may edit the shared matrix.")
     return
   end
-  local choices = self:GetProviderChoices(category, isHeader)
-  local menu, lastTier = {}, nil
+  local recipient = recipientGUID and self.rosterByGUID[recipientGUID]
+  local choices = self:GetProviderChoices(category, isHeader, recipient)
+  local menu, lastScore = {}, nil
   for _, choice in ipairs(choices) do
     if isHeader or choice.cap.single then
-    if choice.cap.tier ~= lastTier then
-      lastTier = choice.cap.tier
-      menu[#menu+1] = MenuTitle("Effectiveness tier " .. lastTier)
+    if choice.score ~= lastScore then
+      lastScore = choice.score
+      menu[#menu+1] = MenuTitle(
+        isHeader and ("Group score " .. lastScore) or ("Effectiveness " .. lastScore .. "/100")
+      )
     end
     local class = self.Classes[choice.member.classToken]
     local selectedGUID = choice.guid
     local selectedName = choice.member.shortName
     local selectedClassToken = choice.member.classToken
     menu[#menu+1] = {
-      text=selectedName .. " - " .. (class and class.name or selectedClassToken),
+      text=selectedName .. " - " .. (class and class.name or selectedClassToken) .. " (Tier " .. choice.cap.tier .. ")",
       colorCode="|cff"..self:ClassHex(selectedClassToken),
       notCheckable=true,
       func=function()
@@ -119,7 +122,11 @@ function CBC:CreateAssignmentPanel()
         GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:SetText(CBC.Categories[self.category].label)
         if assignment then
           local provider=CBC.providers[assignment.providerGUID]
+          local cap=provider and provider.categories and provider.categories[self.category]
+          local recipient=CBC.rosterByGUID[self.recipientGUID]
+          local score,source=cap and CBC:GetCapabilityScore(recipient,cap,assignment.delivery=="greater")
           GameTooltip:AddLine("Assigned: "..(provider and provider.name or assignment.providerGUID).." ("..assignment.delivery..")",1,1,1)
+          if score then GameTooltip:AddLine("Value: "..score.."/100 ("..source..")",0.65,0.8,1) end
         else GameTooltip:AddLine("No coordinated provider",0.6,0.6,0.6) end
         if aura then GameTooltip:AddLine("Aura: "..aura.name.." | "..CBC:FormatDuration(aura.expires),0.42,0.68,0.92) end
         GameTooltip:Show()
@@ -158,6 +165,8 @@ function CBC:UpdateAssignmentPanel()
         local aura=self:GetCoverage(member.guid,category)
         if assignment then
           local provider=self.providers[assignment.providerGUID]
+          local cap=provider and provider.categories and provider.categories[category]
+          local state=cap and self:CoverageState(member.guid,category,cap,assignment.delivery=="greater")
           if assignment.delivery=="greater" then
             cell.text:SetText("|cff4db8ff*|r")
             cell.cbcBackground:SetTexture(0.05,0.18,0.27,0.72)
@@ -165,8 +174,8 @@ function CBC:UpdateAssignmentPanel()
             cell.text:SetText(provider and ("|cff"..self:ClassHex(provider.classToken)..self:ShortName(provider.name).."|r") or "?")
             cell.cbcBackground:SetTexture(0.02,0.09,0.13,0.72)
           end
-          if not aura then cell.cbcBorders[1]:SetTexture(0.95,0.24,0.20,1)
-          elseif aura.tier < ((provider and provider.categories[category] and provider.categories[category].tier) or 999) then cell.cbcBorders[1]:SetTexture(0.42,0.68,0.92,1)
+          if not aura or state=="missing" or state=="weaker" then cell.cbcBorders[1]:SetTexture(0.95,0.24,0.20,1)
+          elseif state=="stronger" then cell.cbcBorders[1]:SetTexture(0.42,0.68,0.92,1)
           else cell.cbcBorders[1]:SetTexture(0,0,0,1) end
         else
           cell.text:SetText("")

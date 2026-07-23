@@ -47,7 +47,7 @@ end
 
 function CBC:GetPreference(member, category)
   local id = member and member.specID
-  local advertised = member and self.providers[member.guid] and self.providers[member.guid].preferences
+  local advertised = member and self.providers[member.guid] and self.providers[member.guid].preferenceOverrides
   if advertised and advertised[category] ~= nil then return advertised[category] end
   local custom = id and self.db and self.db.preferences and self.db.preferences[id]
   if custom and custom[category] ~= nil then return custom[category] end
@@ -64,8 +64,8 @@ function CBC:SetCurrentPreference(category, tierName)
   self.db.preferences[specID][category] = weight
   local provider = self.providers[UnitGUID("player")]
   if provider then
-    provider.preferences = provider.preferences or {}
-    provider.preferences[category] = weight
+    provider.preferenceOverrides = provider.preferenceOverrides or {}
+    provider.preferenceOverrides[category] = weight
   end
   if self.SendPreferences then self:SendPreferences() end
   self:Rebuild("preference")
