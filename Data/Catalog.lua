@@ -101,10 +101,8 @@ CBC.Categories = {
     variants={
       whispersOfNzoth=Family("CULTIST",{"Whispers of N'Zoth","Whispers of N'zoth"},{"Greater Whispers of N'Zoth","Greater Whispers of N'zoth"},{561386},{561387}),
       devotionOfEmperors=Family("SUNCLERIC",{"Devotion of Emperors"},{"Greater Devotion of Emperors"},{572552},{572553}),
-      -- The single and Greater forms use different names on CoA. Name-based
-      -- spellbook discovery makes Gift of Fervor usable immediately; its
-      -- resolved local spell ID is exposed by /bestow dump for cataloging.
-      crusadersOath=Family("MONK",{"Gift of Fervor"},{"Greater Crusader's Oath"},nil,{572630}),
+      -- The single and Greater forms use different names on CoA.
+      crusadersOath=Family("MONK",{"Gift of Fervor"},{"Greater Crusader's Oath"},{572629},{572630}),
       etchingOfTheLeylines=Family("SPIRITMAGE",{"Etching of the Leylines"},{"Greater Etching of the Leylines"},{561236},{561242}),
     },
   },
