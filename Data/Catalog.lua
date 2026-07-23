@@ -55,7 +55,7 @@ CBC.Categories = {
     label="Intellect", short="Int",
     priority={{"CHRONOMANCER","PYROMANCER","STARCALLER","STORMBRINGER"}},
     variants={
-      nozdormusWisdom=Family("CHRONOMANCER",{"Nozdormu's Gaze"},{"Greater Nozdormu's Wisdom"},nil,{572396},{greaterPreferred=true}),
+      nozdormusWisdom=Family("CHRONOMANCER",{"Nozdormu's Wisdom"},{"Greater Nozdormu's Wisdom"},{572391,572392,572393,572394,572395},{572396}),
       sealOfAlysrazor=Family("PYROMANCER",{"Seal of Alysrazor"},{"Greater Seal of Alysrazor"},{800196,802819,802820,802821,802822},{570170}),
       celestialMind=Family("STARCALLER",{"Celestial Mind"},{"Greater Celestial Mind"},{300255,301222,301223,301224,301225},{680301}),
       callOfTheStorm=Family("STORMBRINGER",{"Call of the Storm"},{"Greater Call of the Storm"},{578311,578312,578313,578314,578315},{578316}),
