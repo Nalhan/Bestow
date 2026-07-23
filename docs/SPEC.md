@@ -1,6 +1,6 @@
 # Bestow — Fresh Implementation Specification
 
-Status: Draft 0.3  
+Status: Draft 0.4
 Target client: Ascension Conquest of Azeroth, WoW 3.3.5 (`Interface: 30300`)
 
 ## 1. Purpose
@@ -36,10 +36,11 @@ new architecture.
 - Different spell families can provide equivalent effects.
 - Spell families can have multiple ranks.
 - An existing equal or stronger equivalent effect must suppress a reminder.
-- Provider effectiveness is defined by curated class/family priority tiers.
-  Those tiers may incorporate known talent improvements, secondary benefits,
-  and other design considerations without attempting to calculate a complete
-  numeric stat value at runtime.
+- Provider effectiveness is derived from exact spell-effect magnitude,
+  verified rank/talent modifiers, and the recipient specialization's stat
+  weights. Curated class/family priority tiers remain a fallback only while
+  numeric effect data is incomplete or for benefits that cannot be expressed
+  as supported stats.
 - The tracked families are universally mutually exclusive per
   caster/recipient pair. Unique class buffs that do not participate in this
   shared-effect system are outside the version-one flow.
@@ -220,21 +221,18 @@ is identified.
 
 - Scan active auras by category, not only by the assigned spell name.
 - Single and Greater variants of the same family resolve to the same coverage
-  identity and curated effectiveness. Cast form never changes value.
+  identity and effect magnitude. Cast form never changes value.
 - Match straight and typographic apostrophes safely.
 - Prefer spell ID matching when the client exposes aura spell IDs reliably.
-- Each category defines curated, ordered effectiveness tiers containing its
-  provider families.
-- Tier order is authoritative. It may already account for effect magnitude,
-  known talent scaling, and useful secondary effects.
-- Known rank and verified talent state may order providers within the same
-  curated tier only when the catalog explicitly defines that comparison.
-- Version one does not parse tooltips or calculate a universal numeric stat
-  value.
-- The same tier counts as equivalent coverage unless a catalog rule explicitly
-  orders the two families.
-- A higher tier counts as stronger coverage.
-- A lower tier is an upgrade opportunity.
+- Each known rank stores its exact stat deltas or a typed percentage-effect
+  descriptor. Verified talents modify those effects explicitly.
+- Compare equivalent families using their calculated recipient-specific
+  utility. Exact equal utility counts as equivalent coverage; greater utility
+  is stronger coverage.
+- Curated provider tiers are used only when one or both effects lack verified
+  magnitude data. The fallback must be surfaced diagnostically.
+- Tooltip-derived magnitudes are build-time catalog data and require in-game
+  verification; the addon does not parse tooltips during assignment.
 - Expiring coverage becomes actionable only inside the configured refresh
   threshold.
 - The UI must distinguish:
@@ -291,16 +289,17 @@ is identified.
 
 ### 5.6 Recipient preferences
 
-- Preferences are keyed by exact specialization name when available.
-- Class and role preferences are fallbacks.
-- A global category order is the final fallback.
-- Preferences assign every category to one of four relevance tiers:
-  `Essential`, `Useful`, `Marginal`, or `No benefit`.
-- Categories may be ordered within a relevance tier for deterministic
-  tie-breaking.
+- Preferences are keyed by numeric specialization ID when available.
+- Each spec provides stat weights plus explicit category multipliers/bonuses
+  for survivability or utility that ordinary item weights do not capture.
+- The resolved effect utilities are normalized to integer scores from `0` to
+  `100`; the score provides both ordering and eligibility.
+- Class and role profiles are fallbacks when exact spec data is unavailable.
+- A global category order is only the final deterministic tie-break.
 - Users can edit preferences.
 - Per-player manual overrides always beat spec preferences.
-- Addon users advertise their own effective current-spec preference tiers.
+- Addon users advertise their effective current-spec normalized scores and
+  preference-data version.
 - For a recipient without an advertised preference, the coordinator applies
   its configured spec/class/role template.
 - Unknown specs must not block assignments.
@@ -316,66 +315,34 @@ Suggested lookup order:
 6. bundled class/role preference;
 7. global fallback order.
 
-Default solver weights are:
+`0` means no modeled value. Positive scores are ordered directly. Automatic
+individual assignments use an initial incremental-value threshold of `25`;
+manual assignments may bypass it.
 
-| Preference tier | Weight |
-|---|---:|
-| Essential | 100 |
-| Useful | 25 |
-| Marginal | 5 |
-| No benefit | 0 |
+#### Bundled stat-weight seed
 
-The large gaps make relevance tier more important than incidental within-tier
-ordering. The exact constants remain data, not hard-coded solver behavior.
+Version one ships reviewed source weights and a calculated preference entry
+for every CoA spec. BisBeard's public `specRoles` application module is the
+initial external source. Acquisition, aliases, validation, effect-magnitude
+storage, normalization, and review are defined in
+[`STAT_WEIGHT_WORKFLOW.md`](STAT_WEIGHT_WORKFLOW.md).
 
-#### Bundled preference seed
-
-Version one ships an editable preference entry for every CoA spec in the
-registry dump. Generate the initial entries from the reported role and primary
-stats, then store the generated result as explicit addon data so a client API
-change cannot silently rewrite user expectations.
-
-Seed rules:
-
-- every reported primary-stat category is `Essential`;
-- `Attack Power` is `Essential` when Strength or Agility is reported, or the
-  spec is flagged melee;
-- `Spell Power` is `Essential` when Intellect or Spirit is reported, or the
-  spec is flagged healer;
-- `Mana` is `Essential` for healers, `Useful` for other Intellect/Spirit specs,
-  and `No benefit` otherwise;
-- `Stamina` is `Essential` for tanks and `Useful` for everyone else;
-- `Armor / Stats` is `Essential` for tanks and `Marginal` otherwise;
-- `All Stats` is `Essential` for every spec;
-- Intellect is `Useful` for a Spirit-primary spec when it is not already
-  reported as primary;
-- Spirit is `Useful` for healers, `Marginal` for other Intellect-primary specs,
-  and `No benefit` for physical-only specs;
-- unreported Strength and Agility are `No benefit`;
-- any remaining unclassified category defaults to `No benefit`.
-
-Within an `Essential` tier, use this initial order:
-
-1. Stamina and Armor / Stats for tanks;
-2. Spell Power for healers and Intellect/Spirit damage specs;
-3. reported primary stats in client order;
-4. Attack Power for physical specs;
-5. stable category-key order.
-
-Within lower tiers, use the global stable category order. These are conservative
-defaults, not assertions about perfect theorycrafting; users may edit any spec
-and advertise their effective current-spec preference.
+The previous role/primary-stat seed remains only as a fallback for missing or
+rejected source data. A source refresh never silently overwrites the last
+reviewed bundled snapshot or user edits.
 
 ### 5.7 Multiple providers and value priority
 
 - Providers are identified by player identity, not class.
 - Multiple players of the same class advertise separate capabilities.
-- Higher curated-effectiveness families are preferred.
+- Higher calculated recipient utility is preferred. Curated provider
+  effectiveness is a fallback when numeric comparison is unavailable.
 - Assignment optimization applies this objective order:
   1. satisfy hard validity and uniqueness constraints;
   2. cover higher-demand/relevance categories;
   3. maximize total recipient preference value;
-  4. maximize curated provider effectiveness;
+  4. maximize calculated effect utility and then fallback provider
+     effectiveness where required;
   5. minimize assignment churn only between otherwise equal solutions;
   6. use stable category and provider identity ordering for exact ties.
 - A weaker provider may be assigned a different category if that produces
@@ -402,10 +369,12 @@ and advertise their effective current-spec preference.
 
 - Current roster.
 - Provider capabilities.
-- Provider curated effectiveness tiers and in-tier ordering.
+- Exact provider effect magnitudes, rank/talent modifiers, and fallback
+  effectiveness tiers.
 - Existing active coverage.
 - Recipient class/spec/role.
-- Recipient preference tiers and within-tier ordering.
+- Recipient stat weights, survivability/utility adjustments, normalized
+  scores, and preference-data version.
 - Manual category-header bulk selections.
 - Manual recipient/category provider selections.
 
@@ -420,12 +389,13 @@ and advertise their effective current-spec preference.
 
 ### 6.3 Demand score
 
-For each category, sum the configured relevance-tier weight for every eligible
-recipient. `No benefit` contributes zero. Within-tier category order is used
-only as a deterministic tie-break.
+For each candidate family and eligible recipient, calculate utility from the
+family's realized stat deltas multiplied by that spec's stat weights, then
+apply explicit category multipliers/bonuses and normalize to `0..100`.
 
-Curated provider effectiveness is evaluated separately from recipient demand;
-the solver must not multiply arbitrary numeric stat magnitudes.
+Category demand is the sum of the best available normalized utility for its
+eligible recipients. Zero contributes nothing. Exact ties use stable category
+and identity ordering.
 
 ### 6.4 Initial implementation
 
@@ -433,15 +403,15 @@ Use a deterministic matrix solver:
 
 1. Lock valid manual recipient/category provider selections.
 2. In a party, resolve each recipient's remaining desired categories by
-   relevance tier and allow computed individual differences.
+   normalized utility and allow computed individual differences.
 3. In a raid, compute raid-wide category/provider coverage first and populate
    recipients from those Greater defaults; only explicit cell selections may
    create individual differences.
 4. Assign at most one provider to each recipient/category cell.
 5. Enforce one family per provider/recipient pair.
-6. Prefer the highest curated provider tier for a category unless using that
-   provider elsewhere produces better total category coverage and recipient
-   value.
+6. Prefer the provider/rank with the highest calculated recipient utility
+   unless using that provider elsewhere produces better total coverage and
+   utility. Use curated tiers only when numeric data is unavailable.
 7. Derive each provider's Greater category from the modal count of their final
    recipient assignments.
 8. Mark every non-modal provider/recipient assignment as an individual cast.
@@ -455,9 +425,9 @@ result is validated against representative party and raid fixtures.
 Replace greedy matching with maximum-weight bipartite matching if testing shows
 greedy assignments lose meaningful total value.
 
-The edge score should combine the recipient relevance tier, category demand,
-and an ordinal curated provider tier. Curated tier order must be preserved;
-the solver must not pretend the tier number is an actual stat magnitude.
+The edge score combines normalized recipient utility, category demand, and
+fallback provider ordering when numeric effect data is incomplete. The
+underlying raw utility and every adjustment remain auditable data.
 
 Changing algorithms must not change the data model or communications format.
 
@@ -466,14 +436,15 @@ Changing algorithms must not change the data model or communications format.
 For each party recipient:
 
 1. Honor explicit manual provider selections.
-2. Read the recipient's relevance tiers.
-3. Allocate available providers across useful cells while enforcing one family
-   per provider/recipient pair and one provider per cell.
+2. Read the recipient's normalized family utilities.
+3. Allocate available providers across positive-value cells while enforcing
+   one family per provider/recipient pair and one provider per cell.
 4. When a provider is selected for a category other than their derived Greater
    category, create an individual cast assignment.
 5. If selecting a provider displaces another provider from the cell, re-run
-   that displaced provider against the recipient's next-highest useful,
-   unoccupied category; assign nothing if no improvement remains.
+   that displaced provider against the recipient's next-highest positive-gain,
+   unoccupied category; assign nothing if no threshold-qualified improvement
+   remains.
 6. Suppress casts whose active coverage is equal or stronger.
 
 Here, `assign nothing` means no individual responsibility for that displaced
@@ -490,14 +461,9 @@ Categories = {
     label = "Strength",
     shortLabel = "Str",
     icon = "Interface\\Icons\\...",
-    priorityTiers = {
-      {"honor", "riteOfPower"},
-      {"markOfKorthazz"},
-    },
     variants = {
       honor = {
         providerClass = "Guardian",
-        priorityTier = 1,
         single = {
           names = {"Honor"},
           rankIDs = {300856, 301228, 301229, 301230, 301231, 301232},
@@ -506,7 +472,13 @@ Categories = {
           names = {"Greater Honor"},
           rankIDs = {680280},
         },
+        effectsByRank = {
+          -- Schema example only; 12 is not a verified Honor value.
+          [300856] = {kind = "stats", stats = {strength = 12}},
+          -- Remaining verified rank values.
+        },
         talentRule = "guardianHonor",
+        fallbackPriorityTier = 1,
       },
     },
   },
@@ -522,8 +494,10 @@ Capability = {
   providerClass = "Guardian",
   singleSpellID = 301232,
   greaterSpellID = 680280,
-  priorityTier = 1,
-  inTierOrder = 1,
+  -- Schema example only; 72 is not a verified Honor value.
+  resolvedEffect = {kind = "stats", stats = {strength = 72}},
+  effectVerification = "verified",
+  fallbackPriorityTier = 1,
   verifiedTalentState = "unknown",
 }
 ```
@@ -609,7 +583,8 @@ provider's modal Greater category.
 - `STATE_BEGIN`: begins a complete authoritative current-session snapshot.
 - `STATE`: chunked explicit selections plus derived matrix/Greater state.
 - `STATE_END`: atomically installs the completed session revision.
-- `PREF`: revisioned current-spec relevance tiers advertised by that recipient.
+- `PREF`: revisioned current-spec normalized scores and preference-data version
+  advertised by that recipient.
 - `LEAVE`: optional provider state removal.
 
 ### 8.3 Authority
@@ -618,7 +593,8 @@ provider's modal Greater category.
   and individual provider selections for any recipient.
 - In a party, every addon user may edit the shared assignment state.
 - Every provider may always change their own recipient overrides.
-- Each player is authoritative for their own advertised preference tiers.
+- Each player is authoritative for their own advertised preference scores and
+  adjustment overrides.
 - Changes are immediately authoritative; there is no assignment lock or
   accept/decline handshake.
 - A player whose assignment is changed remotely receives a clear, non-spammy
@@ -669,10 +645,13 @@ Visible by default.
 
 Contains:
 
-- one prominent `Buff Next` secure-action button;
+- one prominent out-of-combat `Buff Next` secure-action button;
+- one fixed local Greater secure-action button available in combat when the
+  Greater spell was known and prepared before combat;
 - a remaining-action count and next effect/recipient preview;
 - local raid-wide Greater assignment;
-- applicable individual overrides;
+- one recipient row for every player assigned to the local provider, including
+  players expected to receive the provider's Greater default;
 - effect label rather than provider-specific spell name;
 - remaining duration;
 - missing/covered/stronger/expiring state;
@@ -683,15 +662,22 @@ Click behavior:
 - Each `Buff Next` click casts exactly one spell.
 - Out of combat, the same button is prepared for the next required action
   after cast/aura state is confirmed.
-- Greater and individual rows remain directly clickable out of combat.
+- Greater and recipient rows are directly clickable out of combat.
 - Secure attributes update only out of combat.
-- All cast buttons are disabled in combat. The panel becomes an aura watch:
-  it may reveal missing/expiring recipients and durations, but performs no
-  protected action.
+- In combat, the dynamic `Buff Next` action is disabled because it cannot
+  safely advance to a new spell/unit.
+- A separately prepared Greater button and fixed per-recipient secure buttons
+  remain clickable in combat. Their spell/unit attributes, positions, and row
+  identities are frozen from the last valid out-of-combat snapshot.
+- Aura state, duration, dead/offline/range hints, and missing/covered styling
+  continue to update through an unprotected visual layer without changing the
+  secure action.
 
 The panel/header remains visible when fully covered. Covered recipient rows
-remain available according to the configured hover/expanded mode and show
-their durations.
+are shown by default and display their durations. A recipient whose assignment
+matches the local Greater is still shown; their row casts the equivalent
+single-target form when that form exists. A Greater-only family leaves those
+rows visible as status-only controls.
 
 Queue priority:
 
@@ -710,24 +696,29 @@ The queue advances only after the expected aura is observed.
 #### Collapsible recipient stack
 
 - The header and local Greater/`Buff Next` button remain visible.
-- Default behavior is to expand individual recipient rows while the pointer is
-  over the header, Greater button, or expanded stack.
+- Default behavior is `Always expanded` so the complete local responsibility
+  and group buff state remain visible.
+- Optional `Hover` behavior expands individual recipient rows while the
+  pointer is over the header, Greater button, or expanded stack.
 - The stack collapses after a short configurable delay when the pointer leaves
   the entire region. Moving between the header and rows must not flicker.
 - Missing, expiring, and manually overridden recipient rows automatically
-  reveal themselves. In combat these are non-clickable aura-watch rows.
+  reveal themselves.
 - After successful coverage, an automatically revealed row remains briefly to
   show confirmation/duration and then collapses.
-- Expanding/collapsing out of combat is presentation only. In combat, use
-  non-protected aura-watch presentation rather than revealing or mutating
-  protected cast actions.
+- The protected combat stack is pre-created and pre-positioned out of combat.
+  When combat begins, a secure state driver may reveal that frozen stack
+  without insecure code calling `Show`, `Hide`, `SetPoint`, or `SetAttribute`
+  on protected frames.
+- Combat uses the last prepared recipient ordering. Roster or assignment
+  changes are displayed as pending and applied to secure rows after combat.
 - The collapsed header continues to show a summary such as
   `2 missing · 1 expiring`.
 
 Configuration modes:
 
-- `Hover` — default.
-- `Always expanded`.
+- `Hover`.
+- `Always expanded` is the default.
 - `Always collapsed`.
 
 Additional settings:
@@ -740,7 +731,8 @@ Additional settings:
 - hide-after-buff delay;
 - show covered recipients on hover;
 - always show manual overrides;
-- show missing/expiring aura-watch rows during combat.
+- show the prepared combat recipient stack;
+- show missing/expiring rows during combat.
 
 #### Smart-button combat constraints
 
@@ -748,12 +740,21 @@ Additional settings:
 - The addon cannot cast the entire queue from one click.
 - Out of combat, it may update the smart button's spell and recipient between
   clicks.
-- During combat, `Buff Next`, Greater buttons, and recipient cast buttons are
-  visually disabled, cannot execute a cast, and cannot dynamically advance.
-- Combat prohibition must be established while configuring the action out of
-  combat (for example, with a validated `[nocombat]` secure conditional);
-  entering combat must not require mutating protected attributes.
-- The header displays `Combat: monitoring only`.
+- During combat, the dynamic `Buff Next` button is visually disabled and
+  cannot advance.
+- The fixed Greater button and fixed recipient buttons may execute their
+  preconfigured actions in combat. Every action uses native secure
+  `type="spell"`, `spell`, and `unit` attributes rather than cursor-targeting
+  macros.
+- Protected frames are created, anchored, sized, assigned stable unit tokens,
+  and given spell attributes before combat. Combat visibility changes use
+  validated secure state drivers only.
+- Insecure `PreClick`/`PostClick` handlers must not clear or restore protected
+  attributes during combat. Native unit-targeted spell actions handle failed
+  range/target checks without leaving a targeting cursor.
+- The visual row may report that its frozen secure target is stale, dead,
+  offline, or out of range, but it must not retarget itself until combat ends.
+- The header identifies that combat actions are using the prepared snapshot.
 - Missing and expiring coverage continues to update as an aura watch.
 - Failed, interrupted, or out-of-range actions remain queued until the
   expected aura is observed.
@@ -805,8 +806,9 @@ Selecting another provider creates a manual override. A separate
 `Reset to optimal` cell action clears the manual selection and immediately
 re-runs the optimizer.
 
-Dropdown providers are grouped by curated effectiveness tier, highest first.
-Non-selectable dividers separate tiers. Within a tier sort by:
+Dropdown providers are sorted by calculated utility for the cell's recipient,
+highest first. Non-selectable dividers may separate meaningful utility bands
+or fallback-only provider tiers. Equal-utility entries sort by:
 
 1. verified talent bonus;
 2. highest known rank;
@@ -834,7 +836,8 @@ Cell presentation includes:
 - missing, expiring, covered, or stronger-external-coverage state;
 - duration where attributable;
 - tooltip with provider class, recipient spec, resolved spell/rank,
-  assignment source, curated effectiveness tier, and active aura source.
+  assignment source, calculated utility, stat deltas, fallback tier when used,
+  and active aura source.
 
 Automatic and manual assignments use the same blue assigned-state treatment;
 the interface does not rely on separate automatic/manual colors. Tooltips and
@@ -906,13 +909,15 @@ away.
 
 Ordering:
 
-1. curated effectiveness tier, strongest first;
-2. verified talent improvement descending;
+1. calculated recipient-specific utility, strongest first;
+2. verified talent improvement descending when not already represented in the
+   resolved effect;
 3. highest known rank descending;
-4. provider player name ascending.
+4. fallback provider tier when numeric data is unavailable;
+5. provider player name ascending.
 
-Effectiveness tiers are separated by a snapped one-physical-pixel divider or a
-slightly larger snapped gap. Icons within the same tier remain adjacent.
+Meaningful utility bands or fallback effectiveness tiers are separated by a
+snapped one-physical-pixel divider or slightly larger snapped gap.
 
 Icon content:
 
@@ -920,7 +925,7 @@ Icon content:
 - resolved highest known rank in the tooltip;
 - provider player name and class;
 - spell-family name;
-- curated effectiveness tier and any verified in-tier talent ordering;
+- calculated recipient utility, resolved stat deltas, and any fallback tier;
 - Greater-default or individual-override source;
 - availability, range, and coverage information when known.
 
@@ -966,8 +971,11 @@ Behavior:
 ### 9.4 Preference editor
 
 - Search/filter by class and spec.
-- Assign categories to `Essential`, `Useful`, `Marginal`, or `No benefit`.
-- Reorder categories within a tier by drag, buttons, or mouse wheel.
+- Display source stat weights and source version/hash.
+- Edit category multipliers and additive bonuses on a `0..100` result preview.
+- Show exact/reference buff deltas, base utility, adjustments, adjusted utility,
+  and normalized score.
+- Edit the automatic individual-gain threshold.
 - Reset a spec to bundled defaults.
 - Copy preferences between specs.
 - Import/export serialized profiles.
@@ -982,7 +990,8 @@ Provide a copyable text window containing:
 - provider advertisements;
 - Greater assignments;
 - individual overrides;
-- current coverage and curated effectiveness tiers;
+- current coverage, resolved effect magnitudes, calculated utilities, and any
+  fallback effectiveness tiers;
 - protocol/addon versions;
 - unresolved catalog entries.
 
@@ -1462,7 +1471,8 @@ Responsibilities:
 - `Preferences`: bundled and user-edited recipient priorities.
 - `Assignments`: pure deterministic assignment calculations.
 - `Comms`: versioned capability/manual-state synchronization.
-- `SecureCasting`: out-of-combat secure-button configuration.
+- `SecureCasting`: out-of-combat preparation of dynamic actions and frozen
+  combat-safe Greater/recipient actions.
 - `UI`: presentation and interaction only.
 
 Assignment calculations should be pure functions where practical so they can be
@@ -1519,7 +1529,8 @@ Before a catalog entry is considered complete, verify:
 - exact Greater name;
 - every rank ID in ascending rank order;
 - actual buff aura name/ID;
-- curated effectiveness tier and any explicit in-tier ordering;
+- exact stat/effect magnitude per rank and verification status;
+- fallback effectiveness tier used only when magnitude data is incomplete;
 - duration;
 - talent modifiers;
 - whether single and Greater are both castable;
@@ -1532,17 +1543,20 @@ or Greater variants, and unrelated duplicate-name spell IDs.
 
 ### 15.1 Pure logic tests
 
-- Provider curated-tier ordering.
+- Exact effect-magnitude and talent-modifier resolution.
+- Per-spec stat-weight utility calculations and `0..100` normalization.
+- Survivability multiplier/bonus adjustments.
+- Fallback provider-tier ordering when numeric data is missing.
 - Stable tie breaking.
 - Multiple providers of the same class.
 - Manual assignment locking.
 - Invalid manual assignment handling.
 - One-category-per-provider constraint.
 - One-provider-per-recipient/category-cell constraint.
-- Displaced-provider reassignment to the next useful category.
+- Displaced-provider reassignment to the next threshold-qualified category.
 - Modal Greater selection from final recipient assignment counts.
-- Recipient preference-tier fallback order.
-- `No benefit` categories contribute no demand.
+- Recipient stat-weight/adjustment fallback order.
+- Zero-value categories contribute no demand.
 - Resetting an explicit selection to the computed optimum.
 - Equal/stronger/lower coverage decisions.
 - Protocol encode/decode and malformed payloads.
@@ -1666,7 +1680,9 @@ At 100% image inspection:
 - All assignment changes synchronize with authority checks.
 - Compact and assignment panels work for a forty-player raid.
 - No protected-action errors occur in combat.
-- Cast controls are unavailable in combat while aura monitoring remains live.
+- The prepared Greater and fixed recipient cast controls remain clickable in
+  combat without protected-action errors; dynamic `Buff Next` remains
+  unavailable while aura monitoring stays live.
 - The diagnostics dump is sufficient to report missing spell/class/spec data.
 - All addon panels use the shared pixel-perfect routine.
 - Structural borders remain one physical pixel at supported resolutions,
