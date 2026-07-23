@@ -101,8 +101,17 @@ end
 function CBC:RefreshSession()
   local grouped = (GetNumRaidMembers and GetNumRaidMembers() or 0) > 0 or (GetNumPartyMembers and GetNumPartyMembers() or 0) > 0
   if not grouped then
-    self.db.session = nil
-    self.session = {key=UnitGUID("player") or "solo",header={},cells={},providerOverrides={},revision=0}
+    -- Preserve a solo session across ordinary rebuilds so assignment controls
+    -- can be tested and used on the player. Only create a fresh solo session
+    -- when first loading or after an actual group disbands.
+    if self.groupSessionActive or not self.soloSession then
+      self.db.session = nil
+      self.soloSession = {
+        key=UnitGUID("player") or "solo",
+        header={},cells={},providerOverrides={},revision=0,
+      }
+    end
+    self.session = self.soloSession
     self.groupSessionActive = false
     return
   end

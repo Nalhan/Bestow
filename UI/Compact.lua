@@ -145,6 +145,14 @@ local function SetStatusColor(text, state)
   else text:SetTextColor(0.78,0.78,0.78) end
 end
 
+local function CycleRowOverride(row, delta)
+  if not row or not row.recipientGUID then return end
+  local changed = CBC:CycleLocalOverride(row.recipientGUID, delta)
+  if changed and row.recipientGUID and row.category then
+    CBC:ShowProviderTooltip(row, row.recipientGUID, row.category)
+  end
+end
+
 function CBC:CreateCompact()
   local frame = CreateFrame("Frame", "BestowCompact", UIParent)
   frame:SetWidth(WIDTH); frame:SetHeight(58)
@@ -269,6 +277,7 @@ function CBC:CreateCompact()
     local row = CreateFrame("Button", nil, stack)
     row:SetHeight(ROW_HEIGHT); row:SetPoint("TOPLEFT",5,-(i-1)*ROW_HEIGHT); row:SetPoint("TOPRIGHT",-5,-(i-1)*ROW_HEIGHT)
     self.Pixel:Button(row,0.52)
+    row:EnableMouse(true)
     row:EnableMouseWheel(true)
     row.icon = row:CreateTexture(nil,"ARTWORK"); row.icon:SetWidth(22); row.icon:SetHeight(22); row.icon:SetPoint("LEFT",4,0)
     row.name = row:CreateFontString(nil,"OVERLAY"); row.name:SetPoint("LEFT",row.icon,"RIGHT",5,6); row.name:SetWidth(148); row.name:SetJustifyH("LEFT")
@@ -276,7 +285,7 @@ function CBC:CreateCompact()
     row.status = row:CreateFontString(nil,"OVERLAY"); row.status:SetPoint("LEFT",row.icon,"RIGHT",5,-7); row.status:SetPoint("RIGHT",-5,-7); row.status:SetJustifyH("LEFT")
     self:ApplyFont(row.status,9,"")
     row:SetScript("OnMouseWheel", function(self, delta)
-      if self.recipientGUID then CBC:CycleLocalOverride(self.recipientGUID, delta) end
+      CycleRowOverride(self, delta)
     end)
     row:SetScript("OnEnter", function(self)
       CBC.compactHover=true
@@ -291,7 +300,7 @@ function CBC:CreateCompact()
     overlay:SetScript("PreClick", SecurePreClick)
     overlay:SetScript("PostClick", SecurePostClick)
     overlay:SetScript("OnMouseWheel", function(_, delta)
-      if row.recipientGUID then CBC:CycleLocalOverride(row.recipientGUID, delta) end
+      CycleRowOverride(row, delta)
     end)
     overlay:SetScript("OnEnter", function(self)
       CBC.compactHover = true
@@ -351,6 +360,11 @@ function CBC:ShowProviderTooltip(owner, recipientGUID, category)
     local cell = self.assignment.cells[recipientGUID] and self.assignment.cells[recipientGUID][category]
     if cell and cell.providerGUID == choice.guid then marker = marker .. "|cff4db8ff[ASSIGNED]|r " end
     GameTooltip:AddLine((icon and ("|T"..icon..":16|t ") or "") .. marker .. choice.member.shortName .. "  Tier " .. choice.cap.tier,1,1,1)
+  end
+  if InCombatLockdown and InCombatLockdown() then
+    GameTooltip:AddLine("Assignments locked in combat", 1, 0.35, 0.3)
+  else
+    GameTooltip:AddLine("Mouse wheel: change your assigned buff", 0.65, 0.8, 1)
   end
   GameTooltip:Show()
 end

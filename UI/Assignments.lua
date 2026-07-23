@@ -21,13 +21,17 @@ function CBC:OpenProviderMenu(anchor, category, recipientGUID, isHeader)
       menu[#menu+1] = MenuTitle("Effectiveness tier " .. lastTier)
     end
     local class = self.Classes[choice.member.classToken]
+    local selectedGUID = choice.guid
+    local selectedName = choice.member.shortName
+    local selectedClassToken = choice.member.classToken
     menu[#menu+1] = {
-      text=choice.member.shortName .. " - " .. (class and class.name or choice.member.classToken),
-      colorCode="|cff"..self:ClassHex(choice.member.classToken),
+      text=selectedName .. " - " .. (class and class.name or selectedClassToken),
+      colorCode="|cff"..self:ClassHex(selectedClassToken),
       notCheckable=true,
       func=function()
-        if isHeader then CBC:SetHeaderAssignment(category, choice.guid)
-        else CBC:SetCellOverride(recipientGUID, category, choice.guid) end
+        CloseDropDownMenus()
+        if isHeader then CBC:SetHeaderAssignment(category, selectedGUID)
+        else CBC:SetCellOverride(recipientGUID, category, selectedGUID) end
       end,
     }
     end

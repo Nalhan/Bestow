@@ -316,49 +316,80 @@ function CBC:BuildActions()
 end
 
 function CBC:SetProviderOverride(providerGUID, recipientGUID, category)
-  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments cannot change in combat.") return end
-  if providerGUID ~= UnitGUID("player") then self:Print("Use the assignment matrix to edit another provider.") return end
+  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
+  if providerGUID ~= UnitGUID("player") then self:Print("Use the assignment matrix to edit another provider.") return false end
   self.session.providerOverrides[providerGUID] = self.session.providerOverrides[providerGUID] or {}
   if category then self.session.providerOverrides[providerGUID][recipientGUID] = category
   else self.session.providerOverrides[providerGUID][recipientGUID] = nil end
   self.session.revision = self.session.revision + 1
   if self.SendOverride then self:SendOverride(providerGUID, recipientGUID, category) end
   self:Rebuild("provider override")
+  return true
 end
 
 function CBC:SetCellOverride(recipientGUID, category, providerGUID)
-  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments cannot change in combat.") return end
-  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return end
+  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
+  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return false end
+  local provider = self.providers[providerGUID]
+  local cap = provider and provider.categories and provider.categories[category]
+  if not self.rosterByGUID[recipientGUID] or not cap or not cap.single then
+    self:Print("That provider cannot supply this individual buff.")
+    return false
+  end
   self.session.cells[recipientGUID] = self.session.cells[recipientGUID] or {}
   self.session.cells[recipientGUID][category] = providerGUID
   self.session.revision = self.session.revision + 1
   if self.SendCell then self:SendCell(recipientGUID, category, providerGUID) end
   self:Rebuild("cell override")
+  local recipient = self.rosterByGUID[recipientGUID]
+  self:Print(self:ShortName(provider.name) .. " assigned " .. self.Categories[category].label .. " to " .. recipient.shortName .. ".")
+  return true
 end
 
 function CBC:ResetCellOverride(recipientGUID, category)
-  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments cannot change in combat.") return end
-  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return end
+  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
+  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return false end
   if self.session.cells[recipientGUID] then self.session.cells[recipientGUID][category] = nil end
   self.session.revision = self.session.revision + 1
   if self.SendCell then self:SendCell(recipientGUID, category, nil) end
   self:Rebuild("cell reset")
+  self:Print(self.Categories[category].label .. " reset to the optimal provider.")
+  return true
 end
 
 function CBC:SetHeaderAssignment(category, providerGUID)
-  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments cannot change in combat.") return end
-  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return end
+  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
+  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return false end
+  if providerGUID then
+    local provider = self.providers[providerGUID]
+    local cap = provider and provider.categories and provider.categories[category]
+    if not cap or not cap.greater then
+      self:Print("That provider cannot supply this Greater buff.")
+      return false
+    end
+  end
   self.session.header[category] = providerGUID
   self.session.revision = self.session.revision + 1
   if self.SendHeader then self:SendHeader(category, providerGUID) end
   self:Rebuild("header")
+  if providerGUID then
+    self:Print(self:ShortName(self.providers[providerGUID].name) .. " assigned Greater " .. self.Categories[category].label .. ".")
+  else
+    self:Print("Greater " .. self.Categories[category].label .. " reset to optimal.")
+  end
+  return true
 end
 
 function CBC:CycleLocalOverride(recipientGUID, delta)
+  if InCombatLockdown and InCombatLockdown() then
+    self:Print("Assignments are locked in combat.")
+    return false
+  end
+  if not delta or delta == 0 then return false end
   local playerGUID = UnitGUID("player")
   local provider = self.providers[playerGUID]
   local member = self.rosterByGUID[recipientGUID]
-  if not provider or not member then return end
+  if not provider or not member then return false end
   local choices = {}
   for category, cap in pairs(provider.categories or {}) do
     if cap.single then choices[#choices+1] = {category=category,weight=self:GetPreference(member,category),order=self.Categories[category].order} end
@@ -367,11 +398,23 @@ function CBC:CycleLocalOverride(recipientGUID, delta)
     if a.weight ~= b.weight then return a.weight > b.weight end
     return a.order < b.order
   end)
-  if #choices == 0 then return end
+  if #choices == 0 then
+    self:Print("You do not know any single-target provider buffs.")
+    return false
+  end
+  if #choices == 1 then
+    self:Print(member.shortName .. " has only one available buff: " .. self.Categories[choices[1].category].label .. ".")
+    return false
+  end
   local current = self.session.providerOverrides[playerGUID] and self.session.providerOverrides[playerGUID][recipientGUID]
   current = current or (self.assignment.providerCategoryByTarget[playerGUID] and self.assignment.providerCategoryByTarget[playerGUID][recipientGUID])
   local index = 1
   for i, choice in ipairs(choices) do if choice.category == current then index = i break end end
   index = ((index - 1 + (delta > 0 and -1 or 1)) % #choices) + 1
-  self:SetProviderOverride(playerGUID, recipientGUID, choices[index].category)
+  local category = choices[index].category
+  if self:SetProviderOverride(playerGUID, recipientGUID, category) then
+    self:Print(member.shortName .. " assigned " .. self.Categories[category].label .. ".")
+    return true, category
+  end
+  return false
 end
