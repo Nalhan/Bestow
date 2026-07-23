@@ -510,6 +510,18 @@ Capability = {
 }
 ```
 
+Generated tooltip-derived magnitudes live in `Data/Effects.lua`, keyed by
+spell ID. The typed fields preserve flat primary stats, percentage stats,
+Attack Power, Spell Power, Armor, MP5, resource-cost reduction, individual
+resistances, and all-resistance bonuses independently. Runtime scoring consumes
+these fields; it never reparses tooltip prose.
+
+BisBeard weights price ordinary throughput stats. Bestow separately stores
+curated per-spec unit weights for MP5, resource-cost reduction, Armor, and
+resistances. Every component contributes independently, so a family combining
+MP5 with cost reduction receives both values. Optional per-spec/family synergy
+bonuses are explicit, versioned review data and default to zero.
+
 Roster member:
 
 ```lua

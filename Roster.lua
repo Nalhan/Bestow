@@ -76,6 +76,8 @@ function CBC:RefreshRoster()
                 category=category,family=family.key,provider=token,tier=family.tier,
                 single=family.singleIDs[#family.singleIDs],greater=family.greaterIDs[#family.greaterIDs],
                 singleRank=#family.singleIDs,greaterRank=#family.greaterIDs,
+                singleEffect=self:GetSpellEffect(family.singleIDs[#family.singleIDs]),
+                greaterEffect=self:GetSpellEffect(family.greaterIDs[#family.greaterIDs]),
                 provisional=true,
               }
             end

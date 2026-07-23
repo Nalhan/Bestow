@@ -197,7 +197,9 @@ The script writes:
 
 - `docs/buff_spell_tooltips.csv`, preserving the raw tooltip evidence;
 - `docs/buff_effect_values.csv`, containing parsed measurable components and
-  explicit review status.
+  explicit review status;
+- `Data/Effects.lua`, the generated spell-ID-to-effect table consumed by the
+  addon.
 
 Rows that cannot be parsed remain `needs_review`; no value may be inferred
 merely from a family name or curated provider tier.
@@ -230,13 +232,21 @@ Examples of adjustments:
 - tanks may receive a Stamina multiplier greater than `1.0`;
 - non-tanks may receive a smaller Stamina bonus so survivability is useful
   without outranking primary throughput;
-- mana-efficiency effects may need a curated bonus when MP5 does not fully
-  describe their benefit;
+- MP5, resource-cost reduction, Armor, and resistance components receive
+  explicit curated per-spec utility weights because ordinary item stat weights
+  do not price them;
 - resistance or secondary utility may use a documented bonus when no
   compatible BisBeard weight exists.
 
 Adjustments are data, keyed by spec ID and category. They must never be hidden
 inside solver code.
+
+Special components are additive by default. For example, Devotion of Grace
+contributes both its MP5 utility and its resource-cost-reduction utility, and
+therefore outranks a pure MP5 family of equal magnitude for a spec that values
+cost reduction. A versioned per-spec/family synergy bonus may be added only
+when testing shows that the combined effect is materially non-linear. Its
+default is zero, and every non-zero value requires a review note.
 
 ## Conversion to Bestow's 0–100 scale
 

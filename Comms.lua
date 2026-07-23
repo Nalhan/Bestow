@@ -47,6 +47,8 @@ function CBC:DecodeCapabilities(provider, payload)
         greater=tonumber(greater) ~= 0 and tonumber(greater) or nil,
         singleRank=self:GetFamilyRankIndex(family.singleIDs, tonumber(single)),
         greaterRank=self:GetFamilyRankIndex(family.greaterIDs, tonumber(greater)),
+        singleEffect=self:GetSpellEffect(tonumber(single)),
+        greaterEffect=self:GetSpellEffect(tonumber(greater)),
         tier=tonumber(tier) or family.tier,
       }
     end

@@ -44,7 +44,7 @@ CBC.Categories = {
     priority={{"BARBARIAN","DEMONHUNTER","SPIRITMAGE","MONK","WITCHHUNTER","PROPHET"}},
     variants={
       brutalShout=Family("BARBARIAN",nil,{"Brutal Shout"},nil,{300857,300882,300883,300884,300885,300886,300887},{groupOnly=true}),
-      illidariIntuition=Family("DEMONHUNTER",{"Illidari Intuition"},{"Greater Illidari Intuition"},{800212,501326,501327,501328,501329,501330,501331,501332,501333,501334,501335,501336},{680308}),
+      illidariIntuition=Family("DEMONHUNTER",{"Illidari Intuition"},{"Greater Illidari Intuition"},{800212,501326,501327,501328,501329},{680308}),
       etchingOfTheDextrous=Family("SPIRITMAGE",{"Etching of the Dextrous"},{"Greater Etching of the Dextrous"},{561237,561238,561239,561240},{561241}),
       giftOfZeal=Family("MONK",{"Gift of Zeal"},{"Greater Gift of Zeal"},{706634,300916,300917,300918,300919,300923,300924},{680306}),
       inquisitorsEdict=Family("WITCHHUNTER",{"Inquisitor's Edict"},{"Greater Inquisitor's Edict"},{706741,707351,707352,707353,707354,707355,707683,707678,707679,707680,707681,707682},{680303}),

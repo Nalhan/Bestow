@@ -68,6 +68,8 @@ function CBC:ScanSpellbook()
         category=categoryKey, family=family.key, provider=classToken,
         tier=family.tier, single=single, greater=greater,
         singleRank=singleRank, greaterRank=greaterRank,
+        singleEffect=self:GetSpellEffect(single),
+        greaterEffect=self:GetSpellEffect(greater),
       }
     else
       self.unknownSpellIssues = self.unknownSpellIssues or {}

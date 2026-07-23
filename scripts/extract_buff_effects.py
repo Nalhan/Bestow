@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "Data" / "Catalog.lua"
 RAW_OUTPUT = ROOT / "docs" / "buff_spell_tooltips.csv"
 VALUE_OUTPUT = ROOT / "docs" / "buff_effect_values.csv"
+LUA_OUTPUT = ROOT / "Data" / "Effects.lua"
 
 VALUE_FIELDS = [
     "strength",
@@ -33,7 +34,29 @@ VALUE_FIELDS = [
     "frost_resistance",
     "nature_resistance",
     "shadow_resistance",
+    "all_resistances",
 ]
+
+LUA_FIELDS = {
+    "strength": "strength",
+    "agility": "agility",
+    "stamina": "stamina",
+    "intellect": "intellect",
+    "spirit": "spirit",
+    "attack_power": "attackPower",
+    "spell_power": "spellPower",
+    "armor": "armor",
+    "all_stats_flat": "allStatsFlat",
+    "all_stats_percent": "allStatsPercent",
+    "mana_per_5": "manaPer5",
+    "resource_cost_reduction_percent": "resourceCostReductionPercent",
+    "arcane_resistance": "arcaneResistance",
+    "fire_resistance": "fireResistance",
+    "frost_resistance": "frostResistance",
+    "nature_resistance": "natureResistance",
+    "shadow_resistance": "shadowResistance",
+    "all_resistances": "allResistances",
+}
 
 
 @dataclass(frozen=True)
@@ -197,6 +220,7 @@ def parse_tooltip_tsv(path: Path) -> dict[int, dict[str, str]]:
             entry = {
                 "spellID": raw_id,
                 "name": row.get("resolvedName", ""),
+                "rank": row.get("rank", ""),
                 "tooltipStr": row.get("tooltip", ""),
                 "isTrainer": "false",
             }
@@ -235,7 +259,7 @@ def parse_values(tooltip: str) -> dict[str, str]:
         "armor": r"\barmor\s+by\s+([\d,]+)",
         "mana_per_5": r"([\d,]+)\s+mana\s+(?:every|per)\s+5\s+sec",
         "resource_cost_reduction_percent": (
-            r"\breduc(?:e|es|ing)\s+(?:their |the target'?s )?resource costs?"
+            r"\breduc(?:e|es|ing)\s+(?:their |the target'?s )?(?:resource )?costs?"
             r"\s+by\s+([\d,]+)%"
         ),
         "arcane_resistance": r"\barcane resistance\s+by\s+([\d,]+)",
@@ -243,12 +267,16 @@ def parse_values(tooltip: str) -> dict[str, str]:
         "frost_resistance": r"\bfrost resistance\s+by\s+([\d,]+)",
         "nature_resistance": r"\bnature resistance\s+by\s+([\d,]+)",
         "shadow_resistance": r"\bshadow resistance\s+by\s+([\d,]+)",
+        "all_resistances": (
+            r"\b(?:all|magic) resistances\s+by\s+([\d,]+)"
+        ),
     }
     for field, pattern in patterns.items():
         values[field] = number(pattern, text)
 
     all_stats = re.search(
-        r"\b(?:all (?:primary )?|total )stats\s+by\s+([\d,]+)(%)?",
+        r"\b(?:(?:all (?:primary )?|total )stats|all (?:primary )?attributes)"
+        r"\s+by\s+([\d,]+)(%)?",
         text,
         re.IGNORECASE,
     )
@@ -288,6 +316,7 @@ def effect_summary(values: dict[str, str]) -> str:
         "frost_resistance": "Frost Resist",
         "nature_resistance": "Nature Resist",
         "shadow_resistance": "Shadow Resist",
+        "all_resistances": "All Resist",
     }
     parts = []
     for field in VALUE_FIELDS:
@@ -314,7 +343,7 @@ def write_tables(
     catalog_spells: list[CatalogSpell],
     dump_entries: dict[int, dict[str, str]],
     dump_source: str,
-) -> tuple[int, int]:
+) -> tuple[int, int, dict[int, dict[str, str]]]:
     raw_fields = [
         "category",
         "family",
@@ -323,6 +352,7 @@ def write_tables(
         "rank_index",
         "spell_id",
         "resolved_name",
+        "resolved_rank",
         "tooltip",
         "dump_source",
     ]
@@ -334,6 +364,7 @@ def write_tables(
         "rank_index",
         "spell_id",
         "resolved_name",
+        "resolved_rank",
         *VALUE_FIELDS,
         "effect_summary",
         "parse_status",
@@ -342,6 +373,7 @@ def write_tables(
     ]
     found = 0
     parsed = 0
+    effects: dict[int, dict[str, str]] = {}
     with RAW_OUTPUT.open("w", encoding="utf-8-sig", newline="") as raw_handle, (
         VALUE_OUTPUT.open("w", encoding="utf-8-sig", newline="")
     ) as value_handle:
@@ -353,6 +385,7 @@ def write_tables(
             entry = dump_entries.get(spell.spell_id, {})
             tooltip = clean_tooltip(entry.get("tooltipStr", ""))
             name = entry.get("name", "")
+            rank = entry.get("rank", "")
             has_tooltip = bool(tooltip)
             if has_tooltip:
                 found += 1
@@ -360,10 +393,17 @@ def write_tables(
             summary = effect_summary(values)
             if summary:
                 parsed += 1
+                previous = effects.get(spell.spell_id)
+                if previous is not None and previous != values:
+                    raise ValueError(
+                        f"Conflicting parsed effects for spell {spell.spell_id}"
+                    )
+                effects[spell.spell_id] = values
             raw_writer.writerow(
                 {
                     **spell.__dict__,
                     "resolved_name": name,
+                    "resolved_rank": rank,
                     "tooltip": tooltip,
                     "dump_source": dump_source if has_tooltip else "",
                 }
@@ -372,6 +412,7 @@ def write_tables(
                 {
                     **spell.__dict__,
                     "resolved_name": name,
+                    "resolved_rank": rank,
                     **values,
                     "effect_summary": summary,
                     "parse_status": (
@@ -385,7 +426,37 @@ def write_tables(
                     "notes": "",
                 }
             )
-    return found, parsed
+    return found, parsed, effects
+
+
+def write_lua_effects(effects: dict[int, dict[str, str]]) -> None:
+    lines = [
+        "local _, CBC = ...",
+        "",
+        "-- Generated by scripts/extract_buff_effects.py from curated client tooltips.",
+        "-- Values are tooltip-derived and remain subject to in-game verification.",
+        "CBC.EffectsBySpellID = {",
+    ]
+    for spell_id in sorted(effects):
+        assignments = [
+            f"{lua_key}={effects[spell_id][csv_key]}"
+            for csv_key, lua_key in LUA_FIELDS.items()
+            if effects[spell_id][csv_key]
+        ]
+        lines.append(f"  [{spell_id}] = {{{','.join(assignments)}}},")
+    lines.extend(
+        [
+            "}",
+            "",
+            'CBC.EffectValueSource = "clientTooltipUnverified"',
+            "",
+            "function CBC:GetSpellEffect(spellID)",
+            "  return spellID and self.EffectsBySpellID[spellID] or nil",
+            "end",
+            "",
+        ]
+    )
+    LUA_OUTPUT.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> None:
@@ -411,7 +482,10 @@ def main() -> None:
         dump_entries = parse_spell_dumper(
             source_path.read_text(encoding="utf-8", errors="replace")
         )
-    found, parsed = write_tables(catalog_spells, dump_entries, source_path.name)
+    found, parsed, effects = write_tables(
+        catalog_spells, dump_entries, source_path.name
+    )
+    write_lua_effects(effects)
     total = len(catalog_spells)
     unique_ids = len({spell.spell_id for spell in catalog_spells})
     print(f"Catalog mappings: {total}")
@@ -420,6 +494,7 @@ def main() -> None:
     print(f"Measurable effects parsed: {parsed}/{total}")
     print(f"Wrote {RAW_OUTPUT}")
     print(f"Wrote {VALUE_OUTPUT}")
+    print(f"Wrote {LUA_OUTPUT}")
 
 
 if __name__ == "__main__":
