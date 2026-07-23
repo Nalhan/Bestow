@@ -353,7 +353,8 @@ def write_tables(
             entry = dump_entries.get(spell.spell_id, {})
             tooltip = clean_tooltip(entry.get("tooltipStr", ""))
             name = entry.get("name", "")
-            if entry:
+            has_tooltip = bool(tooltip)
+            if has_tooltip:
                 found += 1
             values = parse_values(tooltip)
             summary = effect_summary(values)
@@ -364,7 +365,7 @@ def write_tables(
                     **spell.__dict__,
                     "resolved_name": name,
                     "tooltip": tooltip,
-                    "dump_source": dump_source if entry else "",
+                    "dump_source": dump_source if has_tooltip else "",
                 }
             )
             value_writer.writerow(
@@ -374,9 +375,13 @@ def write_tables(
                     **values,
                     "effect_summary": summary,
                     "parse_status": (
-                        "parsed" if summary else ("needs_review" if entry else "missing_tooltip")
+                        "parsed"
+                        if summary
+                        else ("needs_review" if has_tooltip else "missing_tooltip")
                     ),
-                    "verification_status": "tooltip_unverified" if entry else "missing",
+                    "verification_status": (
+                        "tooltip_unverified" if has_tooltip else "missing"
+                    ),
                     "notes": "",
                 }
             )

@@ -94,6 +94,7 @@ function CBC:GetCatalogSpellTooltip(spellID)
   end
   local tooltip = self.spellDumpTooltip
   tooltip:ClearLines()
+  tooltip:SetOwner(UIParent, "ANCHOR_NONE")
   tooltip:SetHyperlink("spell:" .. spellID)
   local parts = {}
   for index = 1, tooltip:NumLines() do
