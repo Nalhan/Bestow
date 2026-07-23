@@ -30,13 +30,13 @@ CBC.Categories = {
   },
   stamina = {
     label="Stamina", short="Stam",
-    priority={{"BARBARIAN"},{"NECROMANCER","REAPER"},{"FLESHWARDEN"}},
+    priority={{"BARBARIAN"},{"SONOFARUGAL","NECROMANCER","REAPER"},{"FLESHWARDEN"}},
     variants={
       enduringShout=Family("BARBARIAN",nil,{"Enduring Shout"},nil,{680302,681439,681440,681441},{groupOnly=true}),
       foulMandate=Family("NECROMANCER",{"Foul Mandate"},{"Greater Foul Mandate"},{800199,573295,573296,573297,573298},{680286}),
       riteOfResolve=Family("REAPER",{"Rite of Resolve"},{"Greater Rite of Resolve"},{800198,803310,803311,803312,803313,803314},{680298}),
       markOfRivendare=Family("FLESHWARDEN",{"Mark of Rivendare"},{"Greater Mark of Rivendare"},{803667,803668,803669,803670},{803730}),
-      sanguinaryOffering=Family(nil,{"Sanguinary Offering"},{"Greater Sanguinary Offering"},{706630,707336,707337,707338,707339,707340},{680299},{enabled=false,diagnostic="Blood Mage is absent from the CoA class registry"}),
+      sanguinaryOffering=Family("SONOFARUGAL",{"Sanguinary Offering"},{"Greater Sanguinary Offering"},{706630,707336,707337,707338,707339,707340},{680299}),
     },
   },
   agility = {
@@ -63,12 +63,12 @@ CBC.Categories = {
   },
   spirit = {
     label="Spirit", short="Spirit",
-    priority={{"CHRONOMANCER"},{"WITCHDOCTOR"},{"PROPHET"}},
+    priority={{"CHRONOMANCER","SONOFARUGAL"},{"WITCHDOCTOR"},{"PROPHET"}},
     variants={
       chromiesWisdom=Family("CHRONOMANCER",{"Chromie's Wisdom"},{"Greater Chromie's Wisdom"},{801523,802827,802828,802829,802830,802831,802832,802833,802834},{680307}),
       spiritWuju=Family("WITCHDOCTOR",{"Spirit Wuju"},{"Greater Spirit Wuju"},{560294,561140,561141,561142,561143},{680872}),
       toxicPheromones=Family("PROPHET",{"Toxic Pheromones"},{"Greater Toxic Pheromones"},{707689,707690,707691,707692},{712459},{sharedAuraKey="toxicPheromones"}),
-      bloodsoakedOffering=Family(nil,{"Bloodsoaked Offering"},{"Greater Bloodsoaked Offering"},{572400,572401,572402,572403},{572404},{enabled=false,diagnostic="Blood Mage is absent from the CoA class registry"}),
+      bloodsoakedOffering=Family("SONOFARUGAL",{"Bloodsoaked Offering"},{"Greater Bloodsoaked Offering"},{572400,572401,572402,572403},{572404}),
     },
   },
   attackPower = {

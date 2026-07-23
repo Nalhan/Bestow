@@ -96,7 +96,7 @@ Known source-to-Bestow aliases:
 
 | BisBeard | Bestow |
 |---|---|
-| `Bloodmage` | `Son of Arugal` / `SONOFARUGAL` |
+| `Bloodmage` | `Blood Mage` / `SONOFARUGAL` |
 | `Tinker` | `Tinkerer` / `TINKER` |
 | `Venomancer|Rotweaver` | `Venomancer|Rot` / spec ID `54` |
 

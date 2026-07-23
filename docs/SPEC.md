@@ -184,7 +184,7 @@ sets none of those flags; the remaining words are the reported primary stats.
 | `FLESHWARDEN` | Knight of Xoroth | `16 Hellfire [M Strength Intellect]`, `17 Defiance [T Strength Stamina]`, `18 War [M Strength]` |
 | `GUARDIAN` | Guardian | `19 Gladiator [M Strength]`, `20 Inspiration [M Strength]`, `21 Vanguard [T Strength Stamina]` |
 | `MONK` | Templar | `22 Oathkeeper [T Agility Stamina]`, `23 Zealot [M Agility]`, `24 Crusader [M Agility]` |
-| `SONOFARUGAL` | Son of Arugal | `25 Fleshweaver [D Spirit]`, `26 Sanguine [D Spirit Stamina]`, `27 Accursed [M Agility]`, `99 Eternal [T Agility Stamina]` |
+| `SONOFARUGAL` | Blood Mage | `25 Fleshweaver [D Spirit]`, `26 Sanguine [D Spirit Stamina]`, `27 Accursed [M Agility]`, `99 Eternal [T Agility Stamina]` |
 | `RANGER` | Ranger | `28 Archery [D Agility]`, `29 Farstrider [D Agility]`, `30 Brigand [M Agility]` |
 | `CHRONOMANCER` | Chronomancer | `31 Time [H Spirit]`, `32 Infinite [D Spirit]`, `33 Artificer [D Spirit]` |
 | `NECROMANCER` | Necromancer | `34 Death [D Intellect]`, `35 Animation [D Intellect]`, `36 Rime [D Intellect]` |
@@ -203,10 +203,8 @@ completely. `HERO` never participates as a provider; a unit reporting `HERO`
 is admitted only when explicit client/addon metadata resolves it to one of the
 CoA tokens above.
 
-`Blood Mage` appears in the imported buff catalog but is absent from the
-authoritative current-client CoA registry. Its families remain inactive and
-diagnostically flagged until the source data is corrected or a valid CoA token
-is identified.
+Blood Mage uses the internal client token `SONOFARUGAL`. The legacy display
+names `Son of Arugal` and `Bloodmage` resolve to the same class.
 
 ### 5.2 Spell and rank discovery
 

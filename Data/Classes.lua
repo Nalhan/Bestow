@@ -9,7 +9,7 @@ CBC.Classes = {
   FLESHWARDEN = {name = "Knight of Xoroth", specs = {{16,"Hellfire","M",{"Strength","Intellect"}},{17,"Defiance","T",{"Strength","Stamina"}},{18,"War","M",{"Strength"}}}},
   GUARDIAN = {name = "Guardian", specs = {{19,"Gladiator","M",{"Strength"}},{20,"Inspiration","M",{"Strength"}},{21,"Vanguard","T",{"Strength","Stamina"}}}},
   MONK = {name = "Templar", specs = {{22,"Oathkeeper","T",{"Agility","Stamina"}},{23,"Zealot","M",{"Agility"}},{24,"Crusader","M",{"Agility"}}}},
-  SONOFARUGAL = {name = "Son of Arugal", specs = {{25,"Fleshweaver","D",{"Spirit"}},{26,"Sanguine","D",{"Spirit","Stamina"}},{27,"Accursed","M",{"Agility"}},{99,"Eternal","T",{"Agility","Stamina"}}}},
+  SONOFARUGAL = {name = "Blood Mage", aliases = {"Son of Arugal", "Bloodmage"}, specs = {{25,"Fleshweaver","D",{"Spirit"}},{26,"Sanguine","D",{"Spirit","Stamina"}},{27,"Accursed","M",{"Agility"}},{99,"Eternal","T",{"Agility","Stamina"}}}},
   RANGER = {name = "Ranger", specs = {{28,"Archery","D",{"Agility"}},{29,"Farstrider","D",{"Agility"}},{30,"Brigand","M",{"Agility"}}}},
   CHRONOMANCER = {name = "Chronomancer", specs = {{31,"Time","H",{"Spirit"}},{32,"Infinite","D",{"Spirit"}},{33,"Artificer","D",{"Spirit"}}}},
   NECROMANCER = {name = "Necromancer", specs = {{34,"Death","D",{"Intellect"}},{35,"Animation","D",{"Intellect"}},{36,"Rime","D",{"Intellect"}}}},
@@ -29,6 +29,9 @@ function CBC:BuildClassIndexes()
   for token, class in pairs(self.Classes) do
     self.classNameToToken[self:Normalize(token)] = token
     self.classNameToToken[self:Normalize(class.name)] = token
+    for _, alias in ipairs(class.aliases or {}) do
+      self.classNameToToken[self:Normalize(alias)] = token
+    end
     for _, raw in ipairs(class.specs) do
       local spec = {id=raw[1], name=raw[2], roleFlag=raw[3], stats=raw[4], classToken=token}
       spec.role = raw[3] == "T" and "TANK" or (raw[3] == "H" and "HEALER" or "DAMAGER")

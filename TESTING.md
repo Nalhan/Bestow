@@ -64,5 +64,5 @@ If a file must be temporarily excluded, comment its line in
 4. communications;
 5. pixel/UI modules.
 
-Blood Mage entries are present for diagnostics but inactive because Blood Mage
-is absent from the current CoA class registry.
+Blood Mage uses the client token `SONOFARUGAL`. Sanguinary Offering and
+Bloodsoaked Offering should appear as active capabilities for that class.
