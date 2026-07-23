@@ -37,6 +37,7 @@ local function ConfigureSecureAction(button, action)
 end
 
 local function SecurePreClick(button)
+  if InCombatLockdown and InCombatLockdown() then return end
   local action = button._cbcAction
   if not action or action.mass or not IsSpellInRange then return end
   if IsSpellInRange(action.spellName, action.unit) == 0 then
@@ -46,6 +47,7 @@ local function SecurePreClick(button)
 end
 
 local function SecurePostClick(button)
+  if InCombatLockdown and InCombatLockdown() then return end
   if not button._cbcRangeBlocked then return end
   button._cbcRangeBlocked = nil
   button._cbcActionSignature = nil
@@ -83,6 +85,43 @@ function CBC:SyncRowOverlay(row, action)
   end
   if action and row:IsVisible() then overlay:EnableMouse(true); overlay:Show()
   else overlay:EnableMouse(false); overlay:Hide() end
+end
+
+function CBC:SyncCombatGreaterOverlay(action)
+  local overlay, smart = self.combatGreaterOverlay, self.compactFrame and self.compactFrame.smart
+  if not overlay or not smart or (InCombatLockdown and InCombatLockdown()) then return end
+  ConfigureSecureAction(overlay, action)
+  overlay._cbcHasAction = action ~= nil
+  overlay:EnableMouse(action ~= nil)
+  local left, bottom = smart:GetLeft(), smart:GetBottom()
+  if left and bottom then
+    overlay:ClearAllPoints()
+    overlay:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
+    overlay:SetWidth(smart:GetWidth())
+    overlay:SetHeight(smart:GetHeight())
+  end
+  self.combatPreparedGreaterAction = action
+end
+
+function CBC:SyncCombatRowOverlay(row, action)
+  local overlay = row and row.combatSecureOverlay
+  if not overlay or (InCombatLockdown and InCombatLockdown()) then return end
+  ConfigureSecureAction(overlay, action)
+  overlay._cbcHasAction = action ~= nil
+  overlay:EnableMouse(action ~= nil)
+  local left, bottom = row:GetLeft(), row:GetBottom()
+  if left and bottom then
+    overlay:ClearAllPoints()
+    overlay:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
+    overlay:SetWidth(row:GetWidth())
+    overlay:SetHeight(row:GetHeight())
+    if row.combatBlocker then
+      row.combatBlocker:ClearAllPoints()
+      row.combatBlocker:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
+      row.combatBlocker:SetWidth(row:GetWidth())
+      row.combatBlocker:SetHeight(row:GetHeight())
+    end
+  end
 end
 
 function CBC:GetNextAction()
@@ -198,6 +237,24 @@ function CBC:CreateCompact()
   overlay:Hide()
   self.smartSecureOverlay = overlay
 
+  local combatGreater = CreateFrame("Button", "BestowCombatGreaterSecure", UIParent, "SecureActionButtonTemplate")
+  combatGreater:RegisterForClicks("AnyUp")
+  combatGreater:SetFrameStrata("DIALOG")
+  combatGreater:SetScript("OnEnter", function(self)
+    local action = self._cbcAction
+    if action then
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetText(action.spellName)
+      GameTooltip:AddLine("Prepared combat Greater: " .. CBC.Categories[action.category].label, 1, 1, 1)
+      GameTooltip:Show()
+    end
+  end)
+  combatGreater:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  if RegisterStateDriver then RegisterStateDriver(combatGreater, "visibility", "[combat] show; hide") end
+  combatGreater:EnableMouse(false)
+  combatGreater:Hide()
+  self.combatGreaterOverlay = combatGreater
+
   local stack = CreateFrame("Frame", nil, frame)
   stack:SetWidth(WIDTH); stack:SetHeight(1)
   stack:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, 0)
@@ -251,6 +308,35 @@ function CBC:CreateCompact()
     overlay:EnableMouse(false)
     overlay:Hide()
     row.secureOverlay = overlay
+
+    local combatOverlay = CreateFrame("Button", "BestowRowCombatSecure" .. i, UIParent, "SecureActionButtonTemplate")
+    combatOverlay:RegisterForClicks("AnyUp")
+    combatOverlay:SetFrameStrata("DIALOG")
+    combatOverlay:SetScript("OnEnter", function(self)
+      CBC.compactHover = true
+      if row.recipientGUID then CBC:ShowProviderTooltip(self, row.recipientGUID, row.category) end
+    end)
+    combatOverlay:SetScript("OnLeave", function()
+      GameTooltip:Hide()
+      CBC.compactHover = false
+    end)
+    if RegisterStateDriver then RegisterStateDriver(combatOverlay, "visibility", "[combat] show; hide") end
+    combatOverlay:EnableMouse(false)
+    combatOverlay:Hide()
+    row.combatSecureOverlay = combatOverlay
+
+    local blocker = CreateFrame("Button", nil, UIParent)
+    blocker:SetFrameStrata("TOOLTIP")
+    blocker:EnableMouse(true)
+    blocker:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetText("Combat target changed")
+      GameTooltip:AddLine("This protected row is disabled until combat ends so it cannot cast on the wrong unit.", 1, 0.35, 0.3, true)
+      GameTooltip:Show()
+    end)
+    blocker:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    blocker:Hide()
+    row.combatBlocker = blocker
     frame.rows[i] = row
   end
 end
@@ -312,14 +398,38 @@ function CBC:BuildCompactRows()
   return rows
 end
 
+function CBC:BuildPreparedCombatRows()
+  local rows = {}
+  local playerGUID = UnitGUID("player")
+  local provider = self.providers[playerGUID]
+  for index, prepared in ipairs(self.combatPreparedRows or {}) do
+    local member = self.rosterByGUID[prepared.recipientGUID] or prepared.member
+    local cap = provider and provider.categories and provider.categories[prepared.category] or prepared.cap
+    if member and cap then
+      local state, aura = self:CoverageState(prepared.recipientGUID, prepared.category, cap, prepared.delivery == "greater")
+      rows[index] = {
+        member=member,category=prepared.category,cap=cap,state=state,aura=aura,
+        action=nil,delivery=prepared.delivery,
+        stale=not prepared.unit or UnitGUID(prepared.unit) ~= prepared.recipientGUID,
+      }
+    end
+  end
+  return rows
+end
+
 function CBC:UpdateCompact()
   local frame = self.compactFrame
   if not frame or not self.db.enabled then
     if frame then frame:Hide() end
     if not (InCombatLockdown and InCombatLockdown()) then
       self:SyncSmartOverlay(nil)
+      self:SyncCombatGreaterOverlay(nil)
       if frame and frame.rows then
-        for _, row in ipairs(frame.rows) do self:SyncRowOverlay(row, nil) end
+        for _, row in ipairs(frame.rows) do
+          self:SyncRowOverlay(row, nil)
+          self:SyncCombatRowOverlay(row, nil)
+          if row.combatBlocker then row.combatBlocker:Hide() end
+        end
       end
     end
     return
@@ -331,8 +441,14 @@ function CBC:UpdateCompact()
     if self.smartSecureOverlay then self.smartSecureOverlay._cbcHasAction = false end
   end
   if inCombat then
-    frame.smart.icon:SetTexture("Interface\\Icons\\Ability_Warrior_DefensiveStance")
-    frame.smart.text:SetText("|cffffaa33Combat: monitoring only|r")
+    local preparedGreater = self.combatPreparedGreaterAction
+    if preparedGreater then
+      frame.smart.icon:SetTexture(preparedGreater.icon)
+      frame.smart.text:SetText("|cffffaa33Combat Greater:|r " .. self.Categories[preparedGreater.category].short)
+    else
+      frame.smart.icon:SetTexture("Interface\\Icons\\Ability_Warrior_DefensiveStance")
+      frame.smart.text:SetText("|cffffaa33Combat: no Greater prepared|r")
+    end
   elseif nextAction then
     frame.smart.icon:SetTexture(nextAction.icon)
     frame.smart.text:SetText(self.Categories[nextAction.category].short .. " -> " .. self:ShortName(nextAction.targetName) .. "  |cff888888(" .. #self.actions .. ")|r")
@@ -346,7 +462,38 @@ function CBC:UpdateCompact()
   local greater = self.assignment.greaterByProvider[UnitGUID("player")]
   frame.title:SetText("Bestow" .. (greater and ("  |cff888888Greater: " .. self.Categories[greater].short .. "|r") or ""))
 
-  local views = self:BuildCompactRows()
+  local views = inCombat and self:BuildPreparedCombatRows() or self:BuildCompactRows()
+  if not inCombat then
+    self.combatPreparedRows = {}
+    for index, view in ipairs(views) do
+      if index > #frame.rows then break end
+      if frame.rows[index].combatBlocker then frame.rows[index].combatBlocker:Hide() end
+      self.combatPreparedRows[index] = {
+        recipientGUID=view.member.guid,unit=view.member.unit,
+        category=view.category,delivery=view.delivery,
+        member=view.member,cap=view.cap,
+      }
+      self:SyncCombatRowOverlay(frame.rows[index], view.action)
+    end
+    for index=#views+1,#frame.rows do self:SyncCombatRowOverlay(frame.rows[index], nil) end
+
+    local greaterAction
+    local playerGUID = UnitGUID("player")
+    local greaterCategory = self.assignment.greaterByProvider[playerGUID]
+    local provider = self.providers[playerGUID]
+    local cap = greaterCategory and provider and provider.categories and provider.categories[greaterCategory]
+    if cap and cap.greater then
+      local id, name, rank, icon = self:GetCastSpell(cap, true)
+      if id and name then
+        greaterAction = {
+          priority=1,mass=true,category=greaterCategory,cap=cap,
+          spellID=id,spellName=name,rank=rank,icon=icon,
+          unit="player",targetName="Raid",state="prepared",
+        }
+      end
+    end
+    self:SyncCombatGreaterOverlay(greaterAction)
+  end
   local shown = 0
   frame.stack:Show()
   for _, view in ipairs(views) do
@@ -356,7 +503,7 @@ function CBC:UpdateCompact()
       ((view.state == "missing" or view.state == "weaker") and self.db.revealMissing)
       or (view.state == "expiring" and self.db.revealExpiring)
     )
-    local visible = self.db.showMode == "ALWAYS" or hoverVisible or stateVisible
+    local visible = inCombat or self.db.showMode == "ALWAYS" or hoverVisible or stateVisible
     if visible then
       shown = shown + 1
       local row = frame.rows[shown]
@@ -368,7 +515,13 @@ function CBC:UpdateCompact()
       local _, _, _, icon = self:GetCastSpell(view.cap, false)
       row.icon:SetTexture(icon)
       row.name:SetText("|cff"..self:ClassHex(view.member.classToken)..view.member.shortName.."|r"..(self.db.showSpecs and view.member.specName and (" |cff777777"..view.member.specName.."|r") or ""))
-      if view.member.dead then
+      if row.combatBlocker then row.combatBlocker:Hide() end
+      if inCombat and view.stale then
+        if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
+        row.status:SetText("STALE TARGET  " .. self.Categories[view.category].short)
+        row.status:SetTextColor(1,0.15,0.15)
+        if row.combatBlocker then row.combatBlocker:Show() end
+      elseif view.member.dead then
         if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
         row.status:SetText("DEAD  "..self.Categories[view.category].short); row.status:SetTextColor(1,0.15,0.15)
       else
@@ -388,6 +541,7 @@ function CBC:UpdateCompact()
     else
       self:SyncRowOverlay(frame.rows[i], nil)
     end
+    if frame.rows[i].combatBlocker then frame.rows[i].combatBlocker:Hide() end
     frame.rows[i]:Hide()
   end
   if shown > 0 then
