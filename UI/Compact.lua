@@ -1,6 +1,6 @@
 local _, CBC = ...
 
-local ROW_HEIGHT, WIDTH = 30, 292
+local ROW_HEIGHT, WIDTH = 30, 252
 
 local function SetTopAnchoredHeight(frame, height)
   if frame.cbcTopAnchored or frame.cbcDragging then
