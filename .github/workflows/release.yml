@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v* tag to publish
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Install Lua 5.1
         run: |
@@ -26,13 +34,13 @@ jobs:
 
       - name: Build release package
         env:
-          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ inputs.tag || github.ref_name }}
         run: python3 scripts/package.py --version "${RELEASE_VERSION#v}"
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ inputs.tag || github.ref_name }}
         run: |
           gh release create "$RELEASE_VERSION" \
             --title "Bestow ${RELEASE_VERSION#v}" \
