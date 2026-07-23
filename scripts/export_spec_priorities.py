@@ -104,7 +104,9 @@ def score_spec(spec: dict[str, object]) -> dict[str, int]:
     if role != "T" and scores["stamina"] == 0:
         scores["stamina"] = 40
     if role != "T":
-        scores["armor_stats"] = 10
+        # Mark-style families grant flat all stats as well as armor. Keep them
+        # below the 10% All Stats family, but never treat them as armor-only.
+        scores["armor_stats"] = 65
 
     if "Spirit" in stats and scores["intellect"] == 0:
         scores["intellect"] = 44

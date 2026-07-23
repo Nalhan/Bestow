@@ -36,7 +36,7 @@ function CBC:BuildPreferenceDefaults()
       weights.armorStats = ESSENTIAL
     else
       weights.stamina = math.max(weights.stamina or 0, USEFUL)
-      weights.armorStats = MARGINAL
+      weights.armorStats = USEFUL
     end
     weights.percentStats = ESSENTIAL
     if HasStat(spec, "Spirit") then weights.intellect = math.max(weights.intellect or 0, USEFUL) end

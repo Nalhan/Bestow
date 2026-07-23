@@ -74,7 +74,7 @@ Initial categories:
 | `spellPower` | Spell Power | `SP` |
 | `percentStats` | All Stats | `All Stats` |
 | `mana` | Mana Efficiency | `Mana` |
-| `armorStats` | Armor / Stats | `Armor` |
+| `armorStats` | Stats + Armor | `Stats+` |
 
 Each category also defines a canonical display icon. The effect category owns
 the compact label; provider-specific spell names never leak into space-limited
@@ -83,6 +83,12 @@ assignment cells or cast rows.
 Templar's All Stats family uses different single and raid-wide names:
 `Gift of Fervor` is the individual 10% Stats cast and
 `Greater Crusader's Oath` is its Greater counterpart.
+
+`armorStats` is a Mark-of-the-Wild-style composite category. Its families
+grant flat primary stats plus armor; they are not armor-only effects. Numeric
+valuation expands the flat amount into Strength, Agility, Stamina, Intellect,
+and Spirit before applying recipient stat weights. Armor contributes only
+through an explicit survivability adjustment.
 
 ### Provider class
 

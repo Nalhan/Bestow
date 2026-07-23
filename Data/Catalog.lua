@@ -122,7 +122,7 @@ CBC.Categories = {
     },
   },
   armorStats = {
-    label="Armor / Stats", short="Armor",
+    label="Stats + Armor", short="Stats+",
     priority={{"DEMONHUNTER","WILDWALKER","RANGER","PROPHET","WITCHHUNTER"}},
     variants={
       manariIntuition=Family("DEMONHUNTER",{"Man'ari Intuition"},{"Greater Man'ari Intuition"},{523478,523479,523480,523481,523482,523483,523484},{523495}),

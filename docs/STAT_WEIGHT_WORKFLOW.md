@@ -146,6 +146,13 @@ effect = {
 }
 ```
 
+Mark-style `Stats + Armor` effects store both components independently. A
+tooltip such as “all primary stats by 12 and armor by 285” realizes a delta of
+12 Strength, Agility, Stamina, Intellect, and Spirit, plus 285 Armor. Each
+applicable stat delta uses the recipient's corresponding stat weight. Armor
+has no invented BisBeard weight; it contributes only through a documented
+spec/category survivability adjustment.
+
 Percentage effects must not be represented as invented flat values:
 
 ```lua
