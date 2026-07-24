@@ -117,15 +117,22 @@ function CBC:GetPreferenceOverride(member, category)
   if custom and custom[category] ~= nil then return custom[category] end
 end
 
+function CBC:GetCapabilityWeightedScore(member, capability, greater)
+  if not member or not capability then return nil end
+  local spellID = greater and capability.greater or capability.single
+  local effect = greater and capability.greaterEffect or capability.singleEffect
+  if not spellID or not effect then return nil end
+  return self:GetNormalizedEffectScore(
+    member.specID, effect, member.unit, capability.family, spellID
+  )
+end
+
 function CBC:GetCapabilityScore(member, capability, greater)
   if not member or not capability then return nil end
   local override = self:GetPreferenceOverride(member, capability.category)
   if override ~= nil then return override, "override" end
-  local spellID = greater and capability.greater or capability.single
-  local effect = greater and capability.greaterEffect or capability.singleEffect
-  if not spellID or not effect then return self:GetPreference(member, capability.category), "fallback" end
   local score, baseScore, raw, bonus, exact =
-    self:GetNormalizedEffectScore(member.specID, effect, member.unit, capability.family, spellID)
+    self:GetCapabilityWeightedScore(member, capability, greater)
   if score == nil then return self:GetPreference(member, capability.category), "fallback" end
   if score == 0 and raw == 0 and bonus == 0 then
     return self:GetPreference(member, capability.category), "fallback"

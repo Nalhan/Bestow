@@ -6,6 +6,24 @@ local function MenuTitle(text)
   return {text=text,isTitle=true,notCheckable=true,disabled=true}
 end
 
+function CBC:GetBestAvailableWeightedScore(member, category)
+  local bestScore, bestBase, bestRaw, bestBonus, bestExact
+  for guid, provider in pairs(self.providers) do
+    local providerMember = self.rosterByGUID[guid]
+    local capability = provider.categories and provider.categories[category]
+    if providerMember and providerMember.online and capability then
+      local greater = not capability.single and capability.greater ~= nil
+      local score, base, raw, bonus, exact =
+        self:GetCapabilityWeightedScore(member, capability, greater)
+      if score and (not bestScore or score > bestScore) then
+        bestScore, bestBase, bestRaw, bestBonus, bestExact =
+          score, base, raw, bonus, exact
+      end
+    end
+  end
+  return bestScore, bestBase, bestRaw, bestBonus, bestExact
+end
+
 function CBC:OpenProviderMenu(anchor, category, recipientGUID, isHeader)
   local me = self.rosterByGUID[UnitGUID("player")]
   if not self:IsGlobalEditor(me) then
@@ -108,7 +126,12 @@ function CBC:CreateAssignmentPanel()
       cell:SetPoint("TOPLEFT",LABEL_W+(column-1)*CELL_W,-(rowIndex-1)*ROW_H)
       self.Pixel:Button(cell,0.43)
       cell.category=category
-      cell.text=cell:CreateFontString(nil,"OVERLAY"); cell.text:SetAllPoints(); cell.text:SetJustifyH("CENTER"); self:ApplyFont(cell.text,8,"")
+      cell.text=cell:CreateFontString(nil,"OVERLAY")
+      cell.text:SetPoint("TOPLEFT",2,0); cell.text:SetPoint("BOTTOMRIGHT",-23,0)
+      cell.text:SetJustifyH("CENTER"); self:ApplyFont(cell.text,8,"")
+      cell.score=cell:CreateFontString(nil,"OVERLAY")
+      cell.score:SetPoint("TOPRIGHT",-2,0); cell.score:SetPoint("BOTTOMRIGHT",-2,0)
+      cell.score:SetWidth(21); cell.score:SetJustifyH("RIGHT"); self:ApplyFont(cell.score,8,"")
       cell:RegisterForClicks("LeftButtonUp","RightButtonUp")
       cell:SetScript("OnClick",function(self,mouse)
         if not self.recipientGUID then return end
@@ -124,13 +147,25 @@ function CBC:CreateAssignmentPanel()
           local provider=CBC.providers[assignment.providerGUID]
           local cap=provider and provider.categories and provider.categories[self.category]
           local recipient=CBC.rosterByGUID[self.recipientGUID]
-          local score,source
+          local score,base,raw,bonus,exact
           if cap then
-            score,source=CBC:GetCapabilityScore(recipient,cap,assignment.delivery=="greater")
+            score,base,raw,bonus,exact=
+              CBC:GetCapabilityWeightedScore(recipient,cap,assignment.delivery=="greater")
           end
           GameTooltip:AddLine("Assigned: "..(provider and provider.name or assignment.providerGUID).." ("..assignment.delivery..")",1,1,1)
-          if score then GameTooltip:AddLine("Value: "..score.."/100 ("..tostring(source or "unknown")..")",0.65,0.8,1) end
+          if score then
+            GameTooltip:AddLine("Weighted value: "..score.."/100",0.65,0.8,1)
+            GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
+          end
         else GameTooltip:AddLine("No coordinated provider",0.6,0.6,0.6) end
+        if not assignment then
+          local recipient=CBC.rosterByGUID[self.recipientGUID]
+          local score,base,raw,bonus,exact=CBC:GetBestAvailableWeightedScore(recipient,self.category)
+          if score then
+            GameTooltip:AddLine("Best available weighted value: "..score.."/100",0.65,0.8,1)
+            GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
+          end
+        end
         if aura then GameTooltip:AddLine("Aura: "..aura.name.." | "..CBC:FormatDuration(aura.expires),0.42,0.68,0.92) end
         GameTooltip:Show()
       end)
@@ -170,6 +205,7 @@ function CBC:UpdateAssignmentPanel()
           local provider=self.providers[assignment.providerGUID]
           local cap=provider and provider.categories and provider.categories[category]
           local state=cap and self:CoverageState(member.guid,category,cap,assignment.delivery=="greater")
+          local score=cap and self:GetCapabilityWeightedScore(member,cap,assignment.delivery=="greater")
           if assignment.delivery=="greater" then
             cell.text:SetText("|cff4db8ff*|r")
             cell.cbcBackground:SetTexture(0.05,0.18,0.27,0.72)
@@ -177,11 +213,14 @@ function CBC:UpdateAssignmentPanel()
             cell.text:SetText(provider and ("|cff"..self:ClassHex(provider.classToken)..self:ShortName(provider.name).."|r") or "?")
             cell.cbcBackground:SetTexture(0.02,0.09,0.13,0.72)
           end
+          cell.score:SetText(score and ("|cffffffff"..score.."|r") or "|cff666666-|r")
           if not aura or state=="missing" or state=="weaker" then cell.cbcBorders[1]:SetTexture(0.95,0.24,0.20,1)
           elseif state=="stronger" then cell.cbcBorders[1]:SetTexture(0.42,0.68,0.92,1)
           else cell.cbcBorders[1]:SetTexture(0,0,0,1) end
         else
           cell.text:SetText("")
+          local score=self:GetBestAvailableWeightedScore(member,category)
+          cell.score:SetText(score and ("|cff666666"..score.."|r") or "|cff444444-|r")
           cell.cbcBackground:SetTexture(0,0,0,0.28)
           cell.cbcBorders[1]:SetTexture(0,0,0,1)
         end
@@ -189,7 +228,7 @@ function CBC:UpdateAssignmentPanel()
       end
     else
       row.label:SetText("")
-      for _,cell in ipairs(row.cells) do cell.recipientGUID=nil; cell:Hide() end
+      for _,cell in ipairs(row.cells) do cell.recipientGUID=nil; cell.score:SetText(""); cell:Hide() end
     end
   end
   frame.content:SetHeight(math.max(#self.roster,1)*ROW_H)
