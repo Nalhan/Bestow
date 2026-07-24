@@ -61,6 +61,48 @@ function CBC:OpenProviderMenu(anchor, category, recipientGUID, isHeader)
   EasyMenu(menu, self.assignmentDropdown, anchor, 0, 0, "MENU")
 end
 
+function CBC:AnnounceGreaterAssignments()
+  local channel
+  if (GetNumRaidMembers and GetNumRaidMembers() or 0) > 0 then
+    channel = "RAID"
+  elseif (GetNumPartyMembers and GetNumPartyMembers() or 0) > 0 then
+    channel = "PARTY"
+  end
+  if not channel then
+    self:Print("Join a party or raid before announcing Greater assignments.")
+    return
+  end
+
+  local providerByCategory = {}
+  for providerGUID, category in pairs(self.assignment.greaterByProvider or {}) do
+    providerByCategory[category] = providerGUID
+  end
+  local entries = {}
+  for _, category in ipairs(self.CategoryOrder) do
+    local providerGUID = providerByCategory[category]
+    local provider = providerGUID and self.providers[providerGUID]
+    if provider then
+      entries[#entries+1] = self.Categories[category].short.."="..self:ShortName(provider.name)
+    end
+  end
+  if #entries == 0 then
+    self:Print("There are no Greater assignments to announce.")
+    return
+  end
+
+  local firstPrefix, continuedPrefix = "Bestow Greaters: ", "Bestow Greaters (cont.): "
+  local line, prefix = firstPrefix, firstPrefix
+  for _, entry in ipairs(entries) do
+    local separator = line == prefix and "" or " | "
+    if string.len(line..separator..entry) > 240 then
+      SendChatMessage(line, channel)
+      prefix, line, separator = continuedPrefix, continuedPrefix, ""
+    end
+    line = line..separator..entry
+  end
+  if line ~= prefix then SendChatMessage(line, channel) end
+end
+
 function CBC:CreateAssignmentPanel()
   local frame = CreateFrame("Frame","BestowAssignments",UIParent)
   frame:SetWidth(LABEL_W + #self.CategoryOrder * CELL_W + 34)
@@ -83,7 +125,21 @@ function CBC:CreateAssignmentPanel()
   local title=frame:CreateFontString(nil,"OVERLAY"); title:SetPoint("TOPLEFT",8,-7); self:ApplyFont(title,13,""); title:SetText("Bestow Group Assignments")
   self:CreateCloseButton(frame)
 
-  local hint=frame:CreateFontString(nil,"OVERLAY"); hint:SetPoint("TOPRIGHT",-28,-9); self:ApplyFont(hint,9,""); hint:SetText("|cff777777Left-click assign | Right-click reset|r")
+  local announce=CreateFrame("Button",nil,frame)
+  announce:SetWidth(118); announce:SetHeight(20); announce:SetPoint("TOPRIGHT",-28,-4)
+  announce:SetText("Announce Greaters"); announce:SetNormalFontObject(GameFontNormalSmall)
+  self.Pixel:Button(announce,0.48)
+  announce:SetScript("OnClick",function() CBC:AnnounceGreaterAssignments() end)
+  announce:SetScript("OnEnter",function(self)
+    GameTooltip:SetOwner(self,"ANCHOR_BOTTOM")
+    GameTooltip:SetText("Announce Greater assignments")
+    GameTooltip:AddLine("Prints the current Greater provider for each assigned buff category in party or raid chat.",1,1,1,true)
+    GameTooltip:Show()
+  end)
+  announce:SetScript("OnLeave",function() GameTooltip:Hide() end)
+  frame.announce=announce
+
+  local hint=frame:CreateFontString(nil,"OVERLAY"); hint:SetPoint("RIGHT",announce,"LEFT",-8,0); self:ApplyFont(hint,9,""); hint:SetText("|cff777777Left-click assign | Right-click reset|r")
 
   for column,category in ipairs(self.CategoryOrder) do
     local button=CreateFrame("Button",nil,frame)
