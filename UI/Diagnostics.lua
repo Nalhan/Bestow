@@ -1,5 +1,100 @@
 local _, CBC = ...
 
+local effectFieldOrder = {
+  "strength", "agility", "stamina", "intellect", "spirit",
+  "attackPower", "spellPower", "armor", "allStatsFlat", "allStatsPercent",
+  "manaPer5", "resourceCostReductionPercent",
+  "arcaneResistance", "fireResistance", "frostResistance",
+  "natureResistance", "shadowResistance", "allResistances",
+}
+
+local function SortedKeys(source)
+  local keys = {}
+  for key in pairs(source or {}) do keys[#keys+1] = key end
+  table.sort(keys)
+  return keys
+end
+
+local function FormatNumber(value)
+  if value == nil then return "nil" end
+  if type(value) ~= "number" then return tostring(value) end
+  if value == math.floor(value) then return tostring(value) end
+  local text = string.format("%.4f", value)
+  text = string.gsub(text, "0+$", "")
+  return string.gsub(text, "%.$", "")
+end
+
+local function FormatEffect(effect)
+  if not effect then return "MISSING" end
+  local parts, seen = {}, {}
+  for _, key in ipairs(effectFieldOrder) do
+    if effect[key] ~= nil then
+      parts[#parts+1] = key.."="..FormatNumber(effect[key])
+      seen[key] = true
+    end
+  end
+  for _, key in ipairs(SortedKeys(effect)) do
+    if not seen[key] then parts[#parts+1] = key.."="..FormatNumber(effect[key]) end
+  end
+  return #parts > 0 and table.concat(parts, ",") or "EMPTY"
+end
+
+function CBC:AppendCurrentSpecValuationDiagnostics(lines, specID, localMember)
+  lines[#lines+1] = ""
+  lines[#lines+1] = "Current-spec valuation:"
+  local weights, profile = self:GetSpecStatWeights(specID)
+  if not weights then
+    lines[#lines+1] = "  No stat-weight profile is available."
+    return
+  end
+
+  lines[#lines+1] = "  Profile: "..tostring(profile.sourceKey).." role="..tostring(profile.role)
+  lines[#lines+1] = "  Configured stat weights:"
+  for _, key in ipairs(SortedKeys(weights)) do
+    lines[#lines+1] = "    "..key.."="..FormatNumber(weights[key])
+  end
+
+  local unit = localMember and localMember.unit or "player"
+  local stats, exact = self:GetScoringStats(unit)
+  lines[#lines+1] = string.format(
+    "  Primary-stat inputs: strength=%s agility=%s stamina=%s intellect=%s spirit=%s exact=%s",
+    FormatNumber(stats.strength), FormatNumber(stats.agility), FormatNumber(stats.stamina),
+    FormatNumber(stats.intellect), FormatNumber(stats.spirit), tostring(exact)
+  )
+  local maximum = self:GetMaxRawEffectUtility(specID, unit)
+  lines[#lines+1] = "  Normalization maximum raw utility: "..FormatNumber(maximum)
+  lines[#lines+1] = "  Buff values (highest configured rank for each form):"
+  lines[#lines+1] = "    category/family form spellID name | unweighted components | raw weighted | base 0-100 | bonus | final 0-100"
+
+  for _, categoryKey in ipairs(self.CategoryOrder) do
+    local category = self.Categories[categoryKey]
+    for _, familyKey in ipairs(SortedKeys(category.variants)) do
+      local family = category.variants[familyKey]
+      for _, form in ipairs({"single", "greater"}) do
+        local ids = form == "single" and family.singleIDs or family.greaterIDs
+        local spellID = ids and ids[#ids]
+        if spellID then
+          local effect = self:GetSpellEffect(spellID)
+          local score, baseScore, raw, bonus, valueExact =
+            self:GetNormalizedEffectScore(specID, effect, unit, familyKey, spellID)
+          local name = GetSpellInfo(spellID)
+          if not name then
+            local names = form == "single" and family.singleNames or family.greaterNames
+            name = names and names[#names] or "unknown"
+          end
+          lines[#lines+1] = string.format(
+            "    %s/%s %s %s %s | %s | raw=%s | base=%s | bonus=%s | final=%s exact=%s provider=%s tier=%s",
+            categoryKey, familyKey, form, tostring(spellID), tostring(name),
+            FormatEffect(effect), FormatNumber(raw), FormatNumber(baseScore),
+            FormatNumber(bonus), FormatNumber(score), tostring(valueExact),
+            tostring(family.provider), tostring(family.tier)
+          )
+        end
+      end
+    end
+  end
+end
+
 function CBC:BuildDiagnosticText()
   local lines={
     "Bestow diagnostics",
@@ -33,6 +128,7 @@ function CBC:BuildDiagnosticText()
       )
     end
   end
+  self:AppendCurrentSpecValuationDiagnostics(lines,specID,localMember)
   lines[#lines+1]=""
   lines[#lines+1]="Roster/providers:"
   for _,member in ipairs(self.roster) do
