@@ -147,6 +147,12 @@ end
 
 local function CycleRowOverride(row, delta)
   if not row or not row.recipientGUID then return end
+  local provider = CBC.providers[UnitGUID("player")]
+  local capability = provider and provider.categories and provider.categories[row.category]
+  if capability and capability.independent then
+    CBC:Print(CBC.Categories[row.category].label.." is independent and does not replace your other assigned buff.")
+    return
+  end
   local changed = CBC:CycleLocalOverride(row.recipientGUID, delta)
   if changed and row.recipientGUID and row.category then
     CBC:ShowProviderTooltip(row, row.recipientGUID, row.category)
@@ -273,7 +279,7 @@ function CBC:CreateCompact()
   frame.stack = stack
 
   frame.rows = {}
-  for i=1,40 do
+  for i=1,80 do
     local row = CreateFrame("Button", nil, stack)
     row:SetHeight(ROW_HEIGHT); row:SetPoint("TOPLEFT",5,-(i-1)*ROW_HEIGHT); row:SetPoint("TOPRIGHT",-5,-(i-1)*ROW_HEIGHT)
     self.Pixel:Button(row,0.52)
@@ -354,6 +360,8 @@ function CBC:ShowProviderTooltip(owner, recipientGUID, category)
   GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
   GameTooltip:SetText(self.Categories[category].label)
   local recipient = self.rosterByGUID[recipientGUID]
+  local localProvider = self.providers[UnitGUID("player")]
+  local localCapability = localProvider and localProvider.categories and localProvider.categories[category]
   local choices = self:GetProviderChoices(category, false, recipient)
   for _, choice in ipairs(choices) do
     local _, _, _, icon = self:GetCastSpell(choice.cap, false)
@@ -364,6 +372,8 @@ function CBC:ShowProviderTooltip(owner, recipientGUID, category)
   end
   if InCombatLockdown and InCombatLockdown() then
     GameTooltip:AddLine("Assignments locked in combat", 1, 0.35, 0.3)
+  elseif localCapability and localCapability.independent then
+    GameTooltip:AddLine("Independent provider buff; does not replace your other assignment", 0.65, 0.8, 1, true)
   else
     GameTooltip:AddLine("Mouse wheel: change your assigned buff", 0.65, 0.8, 1)
   end
@@ -373,17 +383,20 @@ end
 function CBC:BuildCompactRows()
   local rows = {}
   local playerGUID = UnitGUID("player")
-  local targets = self.assignment.providerCategoryByTarget[playerGUID] or {}
-  local greater = self.assignment.greaterByProvider[playerGUID]
+  local targets = self.assignment.providerCategoriesByTarget[playerGUID] or {}
+  local greater = self.assignment.greaterCategoriesByProvider[playerGUID] or {}
   local provider = self.providers[playerGUID]
-  local actionByRecipient = {}
-  for _, action in ipairs(self.actions) do if action.targetGUID then actionByRecipient[action.targetGUID] = action end end
-  for recipientGUID, category in pairs(targets) do
+  local actionByTargetCategory = {}
+  for _, action in ipairs(self.actions) do
+    if action.targetGUID then actionByTargetCategory[action.targetGUID..":"..action.category] = action end
+  end
+  for recipientGUID, categories in pairs(targets) do
+    for category in pairs(categories) do
     local member = self.rosterByGUID[recipientGUID]
     local cap = provider and provider.categories and provider.categories[category]
     if member and cap then
-      local state, aura = self:CoverageState(recipientGUID,category,cap,category == greater)
-      local action = actionByRecipient[recipientGUID]
+      local state, aura = self:CoverageState(recipientGUID,category,cap,greater[category] == true)
+      local action = actionByTargetCategory[recipientGUID..":"..category]
       -- Every assigned recipient gets a stable row, including recipients
       -- covered by our Greater default. A known single-target form makes the
       -- row directly clickable even when no reminder is currently queued.
@@ -402,8 +415,9 @@ function CBC:BuildCompactRows()
       end
       rows[#rows+1] = {
         member=member,category=category,cap=cap,state=state,aura=aura,
-        action=action,delivery=category == greater and "greater" or "individual",
+        action=action,delivery=greater[category] and "greater" or "individual",
       }
+    end
     end
   end
   table.sort(rows,function(a,b)
@@ -474,8 +488,12 @@ function CBC:UpdateCompact()
     frame.smart.icon:SetTexture("Interface\\Icons\\Spell_Holy_GreaterBlessingofKings")
     frame.smart.text:SetText("|cff66cc88All assigned buffs covered|r")
   end
-  local greater = self.assignment.greaterByProvider[UnitGUID("player")]
-  frame.title:SetText("Bestow" .. (greater and ("  |cff888888Greater: " .. self.Categories[greater].short .. "|r") or ""))
+  local greater = self.assignment.greaterCategoriesByProvider[UnitGUID("player")] or {}
+  local greaterLabels = {}
+  for _, category in ipairs(self.CategoryOrder) do
+    if greater[category] then greaterLabels[#greaterLabels+1] = self.Categories[category].short end
+  end
+  frame.title:SetText("Bestow" .. (#greaterLabels > 0 and ("  |cff888888Greater: " .. table.concat(greaterLabels,",") .. "|r") or ""))
 
   local views = inCombat and self:BuildPreparedCombatRows() or self:BuildCompactRows()
   if not inCombat then
@@ -494,7 +512,11 @@ function CBC:UpdateCompact()
 
     local greaterAction
     local playerGUID = UnitGUID("player")
-    local greaterCategory = self.assignment.greaterByProvider[playerGUID]
+    local greaterCategory
+    local greaterSet = self.assignment.greaterCategoriesByProvider[playerGUID] or {}
+    for _, category in ipairs(self.CategoryOrder) do
+      if greaterSet[category] then greaterCategory = category break end
+    end
     local provider = self.providers[playerGUID]
     local cap = greaterCategory and provider and provider.categories and provider.categories[greaterCategory]
     if cap and cap.greater then

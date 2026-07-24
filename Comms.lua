@@ -49,6 +49,7 @@ function CBC:DecodeCapabilities(provider, payload)
         greaterRank=self:GetFamilyRankIndex(family.greaterIDs, tonumber(greater)),
         singleEffect=self:GetSpellEffect(tonumber(single)),
         greaterEffect=self:GetSpellEffect(tonumber(greater)),
+        independent=family.independent,
         tier=tonumber(tier) or family.tier,
       }
     end

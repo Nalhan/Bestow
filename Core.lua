@@ -5,7 +5,7 @@ _G.Bestow = CBC
 
 CBC.name = addonName or "Bestow"
 CBC.version = "0.2.0-alpha"
-CBC.protocol = 2
+CBC.protocol = 3
 CBC.prefix = "BESTOW1"
 CBC.modules = {}
 CBC.events = {}
@@ -15,7 +15,10 @@ CBC.roster = {}
 CBC.rosterByGUID = {}
 CBC.rosterByName = {}
 CBC.actions = {}
-CBC.assignment = {cells = {}, greaterByProvider = {}, providerCategoryByTarget = {}}
+CBC.assignment = {
+  cells = {}, greaterByCategory = {}, greaterCategoriesByProvider = {},
+  providerCategoriesByTarget = {},
+}
 
 local floor, max = math.floor, math.max
 

@@ -125,9 +125,9 @@ function CBC:BuildDiagnosticText()
     if cap then
       local score,scoreSource,baseScore,raw,bonus,exact=self:GetCapabilityScore(localMember,cap,false)
       lines[#lines+1]=string.format(
-        "  %s family=%s single=%s greater=%s tier=%s score=%s source=%s base=%s raw=%s bonus=%s exact=%s",
+        "  %s family=%s single=%s greater=%s tier=%s independent=%s score=%s source=%s base=%s raw=%s bonus=%s exact=%s",
         category,cap.family,tostring(cap.single),tostring(cap.greater),tostring(cap.tier),
-        tostring(score),tostring(scoreSource),tostring(baseScore),tostring(raw),
+        tostring(cap.independent),tostring(score),tostring(scoreSource),tostring(baseScore),tostring(raw),
         tostring(bonus),tostring(exact)
       )
     end
@@ -141,7 +141,7 @@ function CBC:BuildDiagnosticText()
   end
   lines[#lines+1]=""
   lines[#lines+1]="Greater assignments:"
-  for guid,category in pairs(self.assignment.greaterByProvider or {}) do
+  for category,guid in pairs(self.assignment.greaterByCategory or {}) do
     local provider=self.providers[guid]
     lines[#lines+1]="  "..(provider and provider.name or guid).." -> "..category
   end

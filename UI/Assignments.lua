@@ -46,7 +46,8 @@ function CBC:OpenProviderMenu(anchor, category, recipientGUID, isHeader)
     local selectedName = choice.member.shortName
     local selectedClassToken = choice.member.classToken
     menu[#menu+1] = {
-      text=selectedName .. " - " .. (class and class.name or selectedClassToken) .. " (Tier " .. choice.cap.tier .. ")",
+      text=selectedName .. " - " .. (class and class.name or selectedClassToken)
+        .. " (Tier " .. choice.cap.tier .. (choice.cap.independent and ", Independent" or "") .. ")",
       colorCode="|cff"..self:ClassHex(selectedClassToken),
       notCheckable=true,
       func=function()
@@ -73,10 +74,7 @@ function CBC:AnnounceGreaterAssignments()
     return
   end
 
-  local providerByCategory = {}
-  for providerGUID, category in pairs(self.assignment.greaterByProvider or {}) do
-    providerByCategory[category] = providerGUID
-  end
+  local providerByCategory = self.assignment.greaterByCategory or {}
   local entries = {}
   for _, category in ipairs(self.CategoryOrder) do
     local providerGUID = providerByCategory[category]
@@ -93,7 +91,7 @@ function CBC:AnnounceGreaterAssignments()
   local firstPrefix, continuedPrefix = "Bestow Greaters: ", "Bestow Greaters (cont.): "
   local line, prefix = firstPrefix, firstPrefix
   for _, entry in ipairs(entries) do
-    local separator = line == prefix and "" or " | "
+    local separator = line == prefix and "" or ", "
     if string.len(line..separator..entry) > 240 then
       SendChatMessage(line, channel)
       prefix, line, separator = continuedPrefix, continuedPrefix, ""
@@ -244,8 +242,7 @@ end
 function CBC:UpdateAssignmentPanel()
   local frame=self.assignmentFrame
   if not frame or not frame.ready or not frame:IsShown() then return end
-  local providerByGreater={}
-  for guid,category in pairs(self.assignment.greaterByProvider or {}) do providerByGreater[category]=guid end
+  local providerByGreater=self.assignment.greaterByCategory or {}
   for column,category in ipairs(self.CategoryOrder) do
     local header=frame.headers[column]
     local guid=providerByGreater[category]

@@ -49,21 +49,23 @@ function CBC:GetProviderChoices(category, requireGreater, recipient)
 end
 
 function CBC:BuildGreaterBaseline()
-  local greater, usedProviders, usedCategories = {}, {}, {}
+  local greater, independent, usedProviders, usedCategories = {}, {}, {}, {}
   for category, providerGUID in pairs(self.session.header or {}) do
     local provider = self.providers[providerGUID]
     local cap = provider and provider.categories and provider.categories[category]
-    if cap and cap.greater and not usedProviders[providerGUID] and not usedCategories[category] then
-      greater[providerGUID] = category
-      usedProviders[providerGUID], usedCategories[category] = true, true
+    if cap and cap.greater and not usedCategories[category] and (cap.independent or not usedProviders[providerGUID]) then
+      if cap.independent then independent[category] = providerGUID
+      else greater[providerGUID], usedProviders[providerGUID] = category, true end
+      usedCategories[category] = true
     end
   end
   for providerGUID, provider in pairs(self.providers) do
     local category = provider.provisional and provider.observedCategory
     local cap = category and provider.categories and provider.categories[category]
-    if cap and cap.greater and not usedProviders[providerGUID] and not usedCategories[category] then
-      greater[providerGUID] = category
-      usedProviders[providerGUID], usedCategories[category] = true, true
+    if cap and cap.greater and not usedCategories[category] and (cap.independent or not usedProviders[providerGUID]) then
+      if cap.independent then independent[category] = providerGUID
+      else greater[providerGUID], usedProviders[providerGUID] = category, true end
+      usedCategories[category] = true
     end
   end
   local categories = {}
@@ -77,20 +79,23 @@ function CBC:BuildGreaterBaseline()
   for _, entry in ipairs(categories) do
     if not usedCategories[entry.key] and entry.demand > 0 then
       for _, choice in ipairs(self:GetProviderChoices(entry.key, true)) do
-        if not usedProviders[choice.guid] then
-          greater[choice.guid] = entry.key
-          usedProviders[choice.guid], usedCategories[entry.key] = true, true
+        if choice.cap.independent or not usedProviders[choice.guid] then
+          if choice.cap.independent then independent[entry.key] = choice.guid
+          else greater[choice.guid], usedProviders[choice.guid] = entry.key, true end
+          usedCategories[entry.key] = true
           break
         end
       end
     end
   end
-  return greater
+  return greater, independent
 end
 
-local function RemoveProviderFromCells(cells, providerGUID)
+local function RemoveProviderFromCells(self, cells, providerGUID)
+  local provider = self.providers[providerGUID]
   for category, cell in pairs(cells) do
-    if cell.providerGUID == providerGUID then cells[category] = nil end
+    local cap = provider and provider.categories and provider.categories[category]
+    if cell.providerGUID == providerGUID and not (cap and cap.independent) then cells[category] = nil end
   end
 end
 
@@ -98,12 +103,14 @@ function CBC:FillAvailableAssignments(member, cells, baseline)
   local occupiedCategories, occupiedProviders = {}, {}
   for category, cell in pairs(cells) do
     occupiedCategories[category] = true
-    occupiedProviders[cell.providerGUID] = true
+    local provider = self.providers[cell.providerGUID]
+    local cap = provider and provider.categories and provider.categories[category]
+    if not (cap and cap.independent) then occupiedProviders[cell.providerGUID] = true end
   end
   local candidates = {}
   for guid, provider in pairs(self.providers) do
     local providerMember = self.rosterByGUID[guid]
-    if providerMember and providerMember.online and not occupiedProviders[guid] then
+    if providerMember and providerMember.online then
       for category, cap in pairs(provider.categories or {}) do
         local baselineCategory = baseline[guid]
         local deliverable = cap.single or (category == baselineCategory and cap.greater)
@@ -114,13 +121,14 @@ function CBC:FillAvailableAssignments(member, cells, baseline)
           local baselineCap = provider.categories[baselineCategory]
           baselineScore = self:GetCapabilityScore(member, baselineCap, baselineCap.greater ~= nil) or 0
         end
-        local gain = isBaseline and score or score - baselineScore
+        local gain = cap.independent and score or (isBaseline and score or score - baselineScore)
         local threshold = tonumber(self.db.individualAssignmentThreshold) or 25
-        local worthwhile = isBaseline or not baselineCategory or gain >= threshold
+        local worthwhile = cap.independent or isBaseline or not baselineCategory or gain >= threshold
         if score > 0 and worthwhile and not occupiedCategories[category] and deliverable then
           candidates[#candidates+1] = {
             guid=guid,providerName=provider.name or guid,
             category=category,cap=cap,score=score,gain=gain,
+            independent=cap.independent,
             baseline=isBaseline and 1 or 0,
             order=self.Categories[category].order,
           }
@@ -136,9 +144,9 @@ function CBC:FillAvailableAssignments(member, cells, baseline)
     return a.providerName < b.providerName
   end)
   for _, candidate in ipairs(candidates) do
-    if not occupiedProviders[candidate.guid] and not occupiedCategories[candidate.category] then
+    if (candidate.independent or not occupiedProviders[candidate.guid]) and not occupiedCategories[candidate.category] then
       cells[candidate.category] = {providerGUID=candidate.guid,source="auto"}
-      occupiedProviders[candidate.guid] = true
+      if not candidate.independent then occupiedProviders[candidate.guid] = true end
       occupiedCategories[candidate.category] = true
     end
   end
@@ -151,7 +159,7 @@ function CBC:ApplyOverrides(cellsByRecipient)
       local cells = cellsByRecipient[recipientGUID]
       local cap = category and provider and provider.categories and provider.categories[category]
       if cells and cap and cap.single then
-        RemoveProviderFromCells(cells, providerGUID)
+        if not cap.independent then RemoveProviderFromCells(self, cells, providerGUID) end
         cells[category] = {providerGUID=providerGUID,source="provider"}
       end
     end
@@ -163,7 +171,7 @@ function CBC:ApplyOverrides(cellsByRecipient)
         local provider = self.providers[providerGUID]
         local cap = provider and provider.categories and provider.categories[category]
         if cap and cap.single then
-          RemoveProviderFromCells(cells, providerGUID)
+          if not cap.independent then RemoveProviderFromCells(self, cells, providerGUID) end
           cells[category] = {providerGUID=providerGUID,source="manual"}
         end
       end
@@ -171,8 +179,15 @@ function CBC:ApplyOverrides(cellsByRecipient)
   end
 end
 
-function CBC:DeriveGreater(cellsByRecipient, baseline)
+function CBC:DeriveGreater(cellsByRecipient, baseline, independentBaseline)
   local counts, result, usedProviders, usedCategories = {}, {}, {}, {}
+  local function Assign(providerGUID, category, cap)
+    if usedCategories[category] or (not cap.independent and usedProviders[providerGUID]) then return false end
+    result[category] = providerGUID
+    usedCategories[category] = true
+    if not cap.independent then usedProviders[providerGUID] = true end
+    return true
+  end
   for _, cells in pairs(cellsByRecipient) do
     for category, cell in pairs(cells) do
       counts[cell.providerGUID] = counts[cell.providerGUID] or {}
@@ -182,10 +197,7 @@ function CBC:DeriveGreater(cellsByRecipient, baseline)
   for category, providerGUID in pairs(self.session.header or {}) do
     local provider = self.providers[providerGUID]
     local cap = provider and provider.categories and provider.categories[category]
-    if cap and cap.greater and not usedProviders[providerGUID] and not usedCategories[category] then
-      result[providerGUID] = category
-      usedProviders[providerGUID], usedCategories[category] = true, true
-    end
+    if cap and cap.greater then Assign(providerGUID, category, cap) end
   end
   local edges = {}
   for guid, provider in pairs(self.providers) do
@@ -194,7 +206,8 @@ function CBC:DeriveGreater(cellsByRecipient, baseline)
       if cap and cap.greater then
         edges[#edges+1] = {
           guid=guid,providerName=provider.name or guid,category=category,count=count,demand=self:CategoryDemand(category),
-          tier=cap.tier,baseline=(baseline[guid] == category) and 1 or 0,
+          tier=cap.tier,baseline=(baseline[guid] == category or independentBaseline[category] == guid) and 1 or 0,
+          independent=cap.independent,
           order=self.Categories[category].order,
         }
       end
@@ -209,22 +222,23 @@ function CBC:DeriveGreater(cellsByRecipient, baseline)
     return a.order < b.order
   end)
   for _, edge in ipairs(edges) do
-    if not usedProviders[edge.guid] and not usedCategories[edge.category] then
-      result[edge.guid] = edge.category
-      usedProviders[edge.guid], usedCategories[edge.category] = true, true
-    end
+    local provider = self.providers[edge.guid]
+    local cap = provider and provider.categories and provider.categories[edge.category]
+    if cap then Assign(edge.guid, edge.category, cap) end
   end
   for guid, category in pairs(baseline) do
-    if not usedProviders[guid] and not usedCategories[category] then
-      result[guid] = category
-      usedProviders[guid], usedCategories[category] = true, true
-    end
+    local cap = self.providers[guid] and self.providers[guid].categories[category]
+    if cap then Assign(guid, category, cap) end
+  end
+  for category, guid in pairs(independentBaseline) do
+    local cap = self.providers[guid] and self.providers[guid].categories[category]
+    if cap then Assign(guid, category, cap) end
   end
   return result
 end
 
 function CBC:BuildAssignments()
-  local baseline = self:BuildGreaterBaseline()
+  local baseline, independentBaseline = self:BuildGreaterBaseline()
   local cellsByRecipient = {}
   local raid = IsRaid()
   for _, member in ipairs(self.roster) do
@@ -232,6 +246,12 @@ function CBC:BuildAssignments()
     cellsByRecipient[member.guid] = cells
     if raid then
       for providerGUID, category in pairs(baseline) do
+        if not occupied[category] then
+          cells[category] = {providerGUID=providerGUID,source="greater"}
+          occupied[category] = true
+        end
+      end
+      for category, providerGUID in pairs(independentBaseline) do
         if not occupied[category] then
           cells[category] = {providerGUID=providerGUID,source="greater"}
           occupied[category] = true
@@ -247,18 +267,26 @@ function CBC:BuildAssignments()
       self:FillAvailableAssignments(member, cellsByRecipient[member.guid], baseline)
     end
   end
-  local greater = self:DeriveGreater(cellsByRecipient, baseline)
-  local providerCategoryByTarget = {}
+  local greaterByCategory = self:DeriveGreater(cellsByRecipient, baseline, independentBaseline)
+  local providerCategoriesByTarget, greaterCategoriesByProvider = {}, {}
   for recipientGUID, cells in pairs(cellsByRecipient) do
     for category, cell in pairs(cells) do
-      providerCategoryByTarget[cell.providerGUID] = providerCategoryByTarget[cell.providerGUID] or {}
-      providerCategoryByTarget[cell.providerGUID][recipientGUID] = category
-      cell.delivery = greater[cell.providerGUID] == category and "greater" or "individual"
+      providerCategoriesByTarget[cell.providerGUID] = providerCategoriesByTarget[cell.providerGUID] or {}
+      providerCategoriesByTarget[cell.providerGUID][recipientGUID] =
+        providerCategoriesByTarget[cell.providerGUID][recipientGUID] or {}
+      providerCategoriesByTarget[cell.providerGUID][recipientGUID][category] = true
+      cell.delivery = greaterByCategory[category] == cell.providerGUID and "greater" or "individual"
+      if cell.delivery == "greater" then
+        greaterCategoriesByProvider[cell.providerGUID] = greaterCategoriesByProvider[cell.providerGUID] or {}
+        greaterCategoriesByProvider[cell.providerGUID][category] = true
+      end
     end
   end
   self.assignment = {
-    cells=cellsByRecipient,greaterByProvider=greater,
-    providerCategoryByTarget=providerCategoryByTarget,baseline=baseline,
+    cells=cellsByRecipient,greaterByCategory=greaterByCategory,
+    greaterCategoriesByProvider=greaterCategoriesByProvider,
+    providerCategoriesByTarget=providerCategoriesByTarget,
+    baseline=baseline,independentBaseline=independentBaseline,
   }
 end
 
@@ -274,34 +302,38 @@ function CBC:BuildActions()
   local playerGUID = UnitGUID("player")
   local provider = self.providers[playerGUID]
   if not provider then return end
-  local greaterCategory = self.assignment.greaterByProvider[playerGUID]
-  local greaterQueued = false
-  local targets = self.assignment.providerCategoryByTarget[playerGUID] or {}
-  if greaterCategory then
+  local greaterCategories = self.assignment.greaterCategoriesByProvider[playerGUID] or {}
+  local targets = self.assignment.providerCategoriesByTarget[playerGUID] or {}
+  for greaterCategory in pairs(greaterCategories) do
     local cap = provider.categories and provider.categories[greaterCategory]
     if cap and cap.greater then
-      local needed, firstState = false, nil
-      for recipientGUID, category in pairs(targets) do
-        if category == greaterCategory then
-          local state = self:CoverageState(recipientGUID, category, cap, true)
-          if state == "missing" or state == "weaker" then needed, firstState = true, state break end
+      local needed, expiring, firstState = false, false, nil
+      for recipientGUID, categories in pairs(targets) do
+        if categories[greaterCategory] then
+          local state = self:CoverageState(recipientGUID, greaterCategory, cap, true)
+          if state == "missing" or state == "weaker" then
+            needed, firstState = true, state
+            break
+          elseif state == "expiring" then
+            expiring = true
+          end
         end
       end
-      if needed then
+      if needed or expiring then
         local id, name, rank, icon = self:GetCastSpell(cap, true)
         if id and name then
           self.actions[#self.actions+1] = {
-            priority=1,mass=true,category=greaterCategory,cap=cap,
+            priority=needed and 1 or 5,mass=true,category=greaterCategory,cap=cap,
             spellID=id,spellName=name,rank=rank,icon=icon,
-            unit="player",targetName="Raid",state=firstState,
+            unit="player",targetName="Raid",state=firstState or "expiring",
           }
-          greaterQueued = true
         end
       end
     end
   end
-  for recipientGUID, category in pairs(targets) do
-    if category ~= greaterCategory then
+  for recipientGUID, categories in pairs(targets) do
+    for category in pairs(categories) do
+      if not greaterCategories[category] then
       local member = self.rosterByGUID[recipientGUID]
       local cap = provider.categories and provider.categories[category]
       if member and cap and cap.single then
@@ -319,25 +351,6 @@ function CBC:BuildActions()
           end
         end
       end
-    end
-  end
-  if greaterCategory and not greaterQueued then
-    local cap = provider.categories and provider.categories[greaterCategory]
-    if cap and cap.greater then
-      local expiring = false
-      for recipientGUID, category in pairs(targets) do
-        if category == greaterCategory then
-          local state = self:CoverageState(recipientGUID, category, cap, true)
-          if state == "expiring" then expiring = true break end
-        end
-      end
-      if expiring then
-        local id, name, rank, icon = self:GetCastSpell(cap, true)
-        self.actions[#self.actions+1] = {
-          priority=5,mass=true,category=greaterCategory,cap=cap,
-          spellID=id,spellName=name,rank=rank,icon=icon,
-          unit="player",targetName="Raid",state="expiring",
-        }
       end
     end
   end
@@ -421,7 +434,7 @@ function CBC:CycleLocalOverride(recipientGUID, delta)
   if not provider or not member then return false end
   local choices = {}
   for category, cap in pairs(provider.categories or {}) do
-    if cap.single then
+    if cap.single and not cap.independent then
       choices[#choices+1] = {
         category=category,
         weight=self:GetCapabilityScore(member,cap,false) or 0,
@@ -442,7 +455,14 @@ function CBC:CycleLocalOverride(recipientGUID, delta)
     return false
   end
   local current = self.session.providerOverrides[playerGUID] and self.session.providerOverrides[playerGUID][recipientGUID]
-  current = current or (self.assignment.providerCategoryByTarget[playerGUID] and self.assignment.providerCategoryByTarget[playerGUID][recipientGUID])
+  if not current then
+    local assigned = self.assignment.providerCategoriesByTarget[playerGUID]
+      and self.assignment.providerCategoriesByTarget[playerGUID][recipientGUID]
+    for category in pairs(assigned or {}) do
+      local cap = provider.categories[category]
+      if cap and not cap.independent then current = category break end
+    end
+  end
   local index = 1
   for i, choice in ipairs(choices) do if choice.category == current then index = i break end end
   index = ((index - 1 + (delta > 0 and -1 or 1)) % #choices) + 1

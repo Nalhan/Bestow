@@ -126,7 +126,7 @@ CBC.Categories = {
     priority={{"DEMONHUNTER","WILDWALKER","RANGER","PROPHET","WITCHHUNTER"}},
     variants={
       manariIntuition=Family("DEMONHUNTER",{"Man'ari Intuition"},{"Greater Man'ari Intuition"},{523478,523479,523480,523481,523482,523483,523484},{523495}),
-      earthenEndurance=Family("WILDWALKER",{"Earthen Endurance"},{"Greater Earthen Endurance"},{570752,570753,570754,570755},{570756}),
+      earthenEndurance=Family("WILDWALKER",{"Earthen Endurance"},{"Greater Earthen Endurance"},{570752,570753,570754,570755},{570756},{independent=true}),
       footpadsAdaptation=Family("RANGER",{"Footpad's Adaptation"},{"Greater Footpad's Adaptation"},{523489,523490,523491,523492,523493,523494},{523513}),
       beetlePheromones=Family("PROPHET",{"Beetle Pheromones"},{"Greater Beetle Pheromones"},{803651,803652,803653,803654,803655,803656},{803657},{sharedAuraKey="beetlePheromones"}),
       knightsEdict=Family("WITCHHUNTER",{"Knight's Edict"},{"Greater Knight's Edict"},{523485,523486,523487,523488},{523510}),

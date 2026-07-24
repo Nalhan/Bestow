@@ -67,6 +67,7 @@ function CBC:ScanSpellbook()
       self.mine.categories[categoryKey] = {
         category=categoryKey, family=family.key, provider=classToken,
         tier=family.tier, single=single, greater=greater,
+        independent=family.independent,
         singleRank=singleRank, greaterRank=greaterRank,
         singleEffect=self:GetSpellEffect(single),
         greaterEffect=self:GetSpellEffect(greater),

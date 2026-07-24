@@ -24,8 +24,9 @@ new architecture.
 - Recipient specialization is useful for determining which effects the
   recipient values.
 - A provider class may know several mutually exclusive buff families.
-- A caster can maintain only one of its configured buff families on a
-  particular target.
+- A caster normally maintains only one exclusive configured family on a
+  particular target. Catalogued `independent` families do not consume that
+  slot.
 - Greater and single-target variants of a family are functionally identical;
   only their targeting scope differs.
 - Greater variants affect the entire raid. They establish the caster's default
@@ -41,9 +42,11 @@ new architecture.
   weights. Curated class/family priority tiers remain a fallback only while
   numeric effect data is incomplete or for benefits that cannot be expressed
   as supported stats.
-- The tracked families are universally mutually exclusive per
-  caster/recipient pair. Unique class buffs that do not participate in this
-  shared-effect system are outside the version-one flow.
+- Earthen Endurance is an independent Primalist family: it can be assigned and
+  maintained alongside that Primalist's normal mutually-exclusive family,
+  including as a second Greater assignment.
+- Other unique class buffs that do not participate in this shared-effect
+  system remain outside the version-one flow.
 
 ## 3. Items requiring in-game validation
 
@@ -1571,6 +1574,7 @@ or Greater variants, and unrelated duplicate-name spell IDs.
 - Fallback provider-tier ordering when numeric data is missing.
 - Stable tie breaking.
 - Multiple providers of the same class.
+- Independent and exclusive assignments coexisting for one provider/recipient.
 - Manual assignment locking.
 - Invalid manual assignment handling.
 - One-category-per-provider constraint.
