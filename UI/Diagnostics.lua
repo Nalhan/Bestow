@@ -139,10 +139,13 @@ function CBC:BuildDiagnosticText()
   lines[#lines+1]="Roster/providers:"
   for _,member in ipairs(self.roster) do
     local provider=self.providers[member.guid]
+    local inspect=self.specInspectQueue[member.guid]
+    local inspectState=inspect and ("queued/"..tostring(inspect.attempts)) or "none"
     lines[#lines+1]=string.format(
-      "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s",
+      "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s inspect=%s visible=%s canInspect=%s",
       member.name,member.classToken,tostring(member.specName),tostring(member.specID),
-      tostring(member.specSource),tostring(provider and provider.addon),tostring(provider and provider.provisional)
+      tostring(member.specSource),tostring(provider and provider.addon),tostring(provider and provider.provisional),
+      inspectState,tostring(UnitIsVisible(member.unit)),tostring(CanInspect and CanInspect(member.unit))
     )
   end
   lines[#lines+1]=""

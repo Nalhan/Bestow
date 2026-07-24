@@ -15,6 +15,7 @@ CBC.roster = {}
 CBC.rosterByGUID = {}
 CBC.rosterByName = {}
 CBC.externalSpecCache = {}
+CBC.specInspectQueue = {}
 CBC.actions = {}
 CBC.assignment = {
   cells = {}, greaterByCategory = {}, greaterCategoriesByProvider = {},
@@ -127,6 +128,7 @@ function CBC:Initialize()
   self:BuildCatalogIndexes()
   self:BuildPreferenceDefaults()
   self:RegisterExternalSpecResolver()
+  self:RegisterSpecInspectHook()
   self:CreateUI()
   if RegisterAddonMessagePrefix then RegisterAddonMessagePrefix(self.prefix) end
   self:ScanSpellbook()
@@ -143,6 +145,7 @@ local registered = {
   "UNIT_AURA", "CHAT_MSG_ADDON", "PLAYER_TALENT_UPDATE",
   "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_REGEN_DISABLED",
   "PLAYER_REGEN_ENABLED", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED",
+  "INSPECT_TALENT_READY",
 }
 for _, event in ipairs(registered) do eventFrame:RegisterEvent(event) end
 
@@ -158,6 +161,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
   if not CBC.db then return end
   if event == "CHAT_MSG_ADDON" then
     CBC:OnAddonMessage(...)
+  elseif event == "INSPECT_TALENT_READY" then
+    CBC:OnSpecInspectReady()
   elseif event == "UNIT_AURA" then
     local unit = ...
     if unit and (unit == "player" or string.match(unit, "^party%d+$") or string.match(unit, "^raid%d+$")) then
@@ -198,6 +203,11 @@ eventFrame:SetScript("OnUpdate", function(_, elapsed)
   if CBC.broadcastAt and GetTime() >= CBC.broadcastAt then
     CBC.broadcastAt = nil
     if CBC.BroadcastState then CBC:BroadcastState() end
+  end
+  CBC.specInspectElapsed = (CBC.specInspectElapsed or 0) + elapsed
+  if CBC.specInspectElapsed >= 0.25 then
+    CBC.specInspectElapsed = 0
+    CBC:ProcessSpecInspectQueue()
   end
 end)
 
