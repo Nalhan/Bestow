@@ -1,6 +1,6 @@
 local _, CBC = ...
 
-local CELL_W, ROW_H, LABEL_W = 76, 23, 122
+local CELL_W, ROW_H, LABEL_W = 80, 23, 122
 
 local function MenuTitle(text)
   return {text=text,isTitle=true,notCheckable=true,disabled=true}
@@ -127,11 +127,11 @@ function CBC:CreateAssignmentPanel()
       self.Pixel:Button(cell,0.43)
       cell.category=category
       cell.text=cell:CreateFontString(nil,"OVERLAY")
-      cell.text:SetPoint("TOPLEFT",2,0); cell.text:SetPoint("BOTTOMRIGHT",-23,0)
+      cell.text:SetPoint("TOPLEFT",2,0); cell.text:SetPoint("BOTTOMRIGHT",-43,0)
       cell.text:SetJustifyH("CENTER"); self:ApplyFont(cell.text,8,"")
       cell.score=cell:CreateFontString(nil,"OVERLAY")
       cell.score:SetPoint("TOPRIGHT",-2,0); cell.score:SetPoint("BOTTOMRIGHT",-2,0)
-      cell.score:SetWidth(21); cell.score:SetJustifyH("RIGHT"); self:ApplyFont(cell.score,8,"")
+      cell.score:SetWidth(40); cell.score:SetJustifyH("RIGHT"); self:ApplyFont(cell.score,10,"OUTLINE")
       cell:RegisterForClicks("LeftButtonUp","RightButtonUp")
       cell:SetScript("OnClick",function(self,mouse)
         if not self.recipientGUID then return end
@@ -158,13 +158,19 @@ function CBC:CreateAssignmentPanel()
             GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
           end
         else GameTooltip:AddLine("No coordinated provider",0.6,0.6,0.6) end
+        local recipient=CBC.rosterByGUID[self.recipientGUID]
         if not assignment then
-          local recipient=CBC.rosterByGUID[self.recipientGUID]
           local score,base,raw,bonus,exact=CBC:GetBestAvailableWeightedScore(recipient,self.category)
           if score then
             GameTooltip:AddLine("Best available weighted value: "..score.."/100",0.65,0.8,1)
             GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
           end
+        end
+        local potential,base,raw,bonus,exact,family,spellID=
+          CBC:GetCategoryMaxPotentialWeightedScore(recipient,self.category)
+        if potential then
+          GameTooltip:AddLine("Maximum potential: "..potential.."/100 ("..tostring(family)..")",0.55,0.55,0.55)
+          GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Spell: "..tostring(spellID).."  Exact: "..tostring(exact),0.48,0.48,0.48)
         end
         if aura then GameTooltip:AddLine("Aura: "..aura.name.." | "..CBC:FormatDuration(aura.expires),0.42,0.68,0.92) end
         GameTooltip:Show()
@@ -206,6 +212,7 @@ function CBC:UpdateAssignmentPanel()
           local cap=provider and provider.categories and provider.categories[category]
           local state=cap and self:CoverageState(member.guid,category,cap,assignment.delivery=="greater")
           local score=cap and self:GetCapabilityWeightedScore(member,cap,assignment.delivery=="greater")
+          local potential=self:GetCategoryMaxPotentialWeightedScore(member,category)
           if assignment.delivery=="greater" then
             cell.text:SetText("|cff4db8ff*|r")
             cell.cbcBackground:SetTexture(0.05,0.18,0.27,0.72)
@@ -213,14 +220,20 @@ function CBC:UpdateAssignmentPanel()
             cell.text:SetText(provider and ("|cff"..self:ClassHex(provider.classToken)..self:ShortName(provider.name).."|r") or "?")
             cell.cbcBackground:SetTexture(0.02,0.09,0.13,0.72)
           end
-          cell.score:SetText(score and ("|cffffffff"..score.."|r") or "|cff666666-|r")
+          if score and potential then
+            cell.score:SetText("|cffffffff"..score.."|r|cff666666/"..potential.."|r")
+          elseif score then
+            cell.score:SetText("|cffffffff"..score.."|r")
+          else
+            cell.score:SetText(potential and ("|cff666666"..potential.."|r") or "|cff555555-|r")
+          end
           if not aura or state=="missing" or state=="weaker" then cell.cbcBorders[1]:SetTexture(0.95,0.24,0.20,1)
           elseif state=="stronger" then cell.cbcBorders[1]:SetTexture(0.42,0.68,0.92,1)
           else cell.cbcBorders[1]:SetTexture(0,0,0,1) end
         else
           cell.text:SetText("")
-          local score=self:GetBestAvailableWeightedScore(member,category)
-          cell.score:SetText(score and ("|cff666666"..score.."|r") or "|cff444444-|r")
+          local potential=self:GetCategoryMaxPotentialWeightedScore(member,category)
+          cell.score:SetText(potential and ("|cff666666"..potential.."|r") or "|cff444444-|r")
           cell.cbcBackground:SetTexture(0,0,0,0.28)
           cell.cbcBorders[1]:SetTexture(0,0,0,1)
         end

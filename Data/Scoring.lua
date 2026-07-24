@@ -186,6 +186,31 @@ function CBC:GetCapabilityWeightedScore(member, capability, greater)
   )
 end
 
+function CBC:GetCategoryMaxPotentialWeightedScore(member, categoryKey)
+  local category = self.Categories and self.Categories[categoryKey]
+  if not member or not category then return nil end
+  local bestScore, bestBase, bestRaw, bestBonus, bestExact, bestFamily, bestSpellID
+  for familyKey, family in pairs(category.variants or {}) do
+    for _, ids in ipairs({family.singleIDs, family.greaterIDs}) do
+      local spellID = ids and ids[#ids]
+      local effect = spellID and self:GetSpellEffect(spellID)
+      if effect then
+        local score, base, raw, bonus, exact = self:GetNormalizedEffectScore(
+          member.specID, effect, member.unit, familyKey, spellID
+        )
+        if score and (
+          not bestScore or score > bestScore
+          or (score == bestScore and (not bestFamily or familyKey < bestFamily))
+        ) then
+          bestScore, bestBase, bestRaw, bestBonus, bestExact, bestFamily, bestSpellID =
+            score, base, raw, bonus, exact, familyKey, spellID
+        end
+      end
+    end
+  end
+  return bestScore, bestBase, bestRaw, bestBonus, bestExact, bestFamily, bestSpellID
+end
+
 function CBC:GetCapabilityScore(member, capability, greater)
   if not member or not capability then return nil end
   local override = self:GetPreferenceOverride(member, capability.category)
