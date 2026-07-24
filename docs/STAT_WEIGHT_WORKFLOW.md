@@ -352,3 +352,11 @@ MP5, resource-cost reduction, resistance, and other effects without a
 compatible BisBeard weight remain represented in the effect table and are
 valued through `Data/BonusPoints.lua`. Until a non-zero bonus is curated, the
 legacy spec preference is retained as a safe assignment fallback.
+
+The in-game Bestow options include a child `Stat Weights` panel for the
+player's current specialization. It displays the bundled BisBeard value beside
+each editable effective value. SavedVariables store only deviations under
+`statWeightOverrides[specID]`; matching the bundled value removes the override.
+Edited rows are orange and expose both per-row Reset and Reset All controls.
+Changing or resetting a value invalidates normalized-score caches and rebuilds
+assignments immediately.

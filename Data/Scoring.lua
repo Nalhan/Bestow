@@ -25,7 +25,66 @@ end
 
 function CBC:GetSpecStatWeights(specID)
   local profile = self.StatWeightsBySpecID and self.StatWeightsBySpecID[tonumber(specID)]
+  if not profile then return nil end
+  local overrides = self.db and self.db.statWeightOverrides and self.db.statWeightOverrides[tonumber(specID)]
+  if not overrides or not next(overrides) then return profile.weights, profile end
+  self.configuredStatWeightCache = self.configuredStatWeightCache or {}
+  local cached = self.configuredStatWeightCache[tonumber(specID)]
+  if not cached then
+    cached = {}
+    for key, value in pairs(profile.weights) do cached[key] = value end
+    for key, value in pairs(overrides) do
+      if profile.weights[key] ~= nil then cached[key] = value end
+    end
+    self.configuredStatWeightCache[tonumber(specID)] = cached
+  end
+  return cached, profile
+end
+
+function CBC:GetBisBeardStatWeights(specID)
+  local profile = self.StatWeightsBySpecID and self.StatWeightsBySpecID[tonumber(specID)]
   return profile and profile.weights, profile
+end
+
+function CBC:InvalidateStatWeightScores(specID)
+  self.configuredStatWeightCache = self.configuredStatWeightCache or {}
+  self.configuredStatWeightCache[tonumber(specID)] = nil
+  self.maxRawEffectCache = {}
+end
+
+function CBC:SetStatWeightOverride(specID, key, value)
+  specID, value = tonumber(specID), tonumber(value)
+  local defaults = self:GetBisBeardStatWeights(specID)
+  if not defaults or defaults[key] == nil or not value or value < 0 or value == math.huge or value ~= value then
+    return false
+  end
+  self.db.statWeightOverrides[specID] = self.db.statWeightOverrides[specID] or {}
+  if math.abs(value - defaults[key]) < 0.0000001 then
+    self.db.statWeightOverrides[specID][key] = nil
+  else
+    self.db.statWeightOverrides[specID][key] = value
+  end
+  if not next(self.db.statWeightOverrides[specID]) then
+    self.db.statWeightOverrides[specID] = nil
+  end
+  self:InvalidateStatWeightScores(specID)
+  self:Rebuild("stat weight override")
+  return true
+end
+
+function CBC:ResetStatWeightOverrides(specID, key)
+  specID = tonumber(specID)
+  local overrides = self.db.statWeightOverrides and self.db.statWeightOverrides[specID]
+  if not overrides then return false end
+  if key then
+    overrides[key] = nil
+    if not next(overrides) then self.db.statWeightOverrides[specID] = nil end
+  else
+    self.db.statWeightOverrides[specID] = nil
+  end
+  self:InvalidateStatWeightScores(specID)
+  self:Rebuild("reset stat weights")
+  return true
 end
 
 function CBC:GetScoringStats(unit)

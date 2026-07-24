@@ -31,6 +31,7 @@ local defaults = {
   font = "Friz Quadrata TT",
   session = nil,
   preferences = {},
+  statWeightOverrides = {},
   individualAssignmentThreshold = 25,
 }
 
@@ -164,6 +165,9 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
   else
     if event == "PLAYER_TALENT_UPDATE" or event == "ACTIVE_TALENT_GROUP_CHANGED" then
       if CBC.BroadcastState then CBC:BroadcastState() end
+      if CBC.statWeightOptionsPanel and CBC.statWeightOptionsPanel:IsShown() then
+        CBC:RefreshStatWeightOptions()
+      end
     end
     if event == "PLAYER_ENTERING_WORLD" or event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
       CBC.broadcastAt = GetTime() + 0.75

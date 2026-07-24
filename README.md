@@ -13,6 +13,7 @@ overrides, and presents the local caster with a secure one-click action queue.
 - all registered Conquest of Azeroth provider classes;
 - all 70 custom specialization stat-weight profiles;
 - recipient-specific 0-100 buff valuation with curated bonus-point hooks;
+- persistent per-specialization stat-weight editing with BisBeard reset controls;
 - highest-known spell-rank discovery;
 - stronger/equivalent aura suppression;
 - automatic party assignments and raid-wide Greater assignments;

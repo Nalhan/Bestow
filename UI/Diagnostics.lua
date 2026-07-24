@@ -50,8 +50,12 @@ function CBC:AppendCurrentSpecValuationDiagnostics(lines, specID, localMember)
 
   lines[#lines+1] = "  Profile: "..tostring(profile.sourceKey).." role="..tostring(profile.role)
   lines[#lines+1] = "  Configured stat weights:"
+  local bundled = self:GetBisBeardStatWeights(specID)
+  local overrides = self.db.statWeightOverrides and self.db.statWeightOverrides[specID]
   for _, key in ipairs(SortedKeys(weights)) do
-    lines[#lines+1] = "    "..key.."="..FormatNumber(weights[key])
+    local suffix = overrides and overrides[key] ~= nil
+      and " EDITED (BisBeard="..FormatNumber(bundled[key])..")" or ""
+    lines[#lines+1] = "    "..key.."="..FormatNumber(weights[key])..suffix
   end
 
   local unit = localMember and localMember.unit or "player"
