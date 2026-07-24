@@ -42,8 +42,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.tag || github.ref_name }}
         run: |
+          release_flags=()
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
           gh release create "$RELEASE_VERSION" \
             --title "Bestow ${RELEASE_VERSION#v}" \
             --generate-notes \
+            "${release_flags[@]}" \
             dist/Bestow-*.zip \
             dist/Bestow-*.sha256

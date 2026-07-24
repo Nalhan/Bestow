@@ -4,7 +4,7 @@ _G.CoABuffCoordinator = CBC
 _G.Bestow = CBC
 
 CBC.name = addonName or "Bestow"
-CBC.version = "0.1.0-alpha"
+CBC.version = "0.2.0-alpha"
 CBC.protocol = 2
 CBC.prefix = "BESTOW1"
 CBC.modules = {}
