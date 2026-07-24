@@ -124,9 +124,12 @@ function CBC:CreateAssignmentPanel()
           local provider=CBC.providers[assignment.providerGUID]
           local cap=provider and provider.categories and provider.categories[self.category]
           local recipient=CBC.rosterByGUID[self.recipientGUID]
-          local score,source=cap and CBC:GetCapabilityScore(recipient,cap,assignment.delivery=="greater")
+          local score,source
+          if cap then
+            score,source=CBC:GetCapabilityScore(recipient,cap,assignment.delivery=="greater")
+          end
           GameTooltip:AddLine("Assigned: "..(provider and provider.name or assignment.providerGUID).." ("..assignment.delivery..")",1,1,1)
-          if score then GameTooltip:AddLine("Value: "..score.."/100 ("..source..")",0.65,0.8,1) end
+          if score then GameTooltip:AddLine("Value: "..score.."/100 ("..tostring(source or "unknown")..")",0.65,0.8,1) end
         else GameTooltip:AddLine("No coordinated provider",0.6,0.6,0.6) end
         if aura then GameTooltip:AddLine("Aura: "..aura.name.." | "..CBC:FormatDuration(aura.expires),0.42,0.68,0.92) end
         GameTooltip:Show()
