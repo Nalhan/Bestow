@@ -147,6 +147,13 @@ function CBC:BuildDiagnosticText()
       tostring(member.specSource),tostring(provider and provider.addon),tostring(provider and provider.provisional),
       inspectState,tostring(UnitIsVisible(member.unit)),tostring(CanInspect and CanInspect(member.unit))
     )
+    for category,observed in pairs(provider and provider.observedCapabilities or {}) do
+      lines[#lines+1]=string.format(
+        "    observed %s family=%s form=%s spell=%s rank=%s",
+        category,tostring(observed.family),tostring(observed.form),
+        tostring(observed.spellID),tostring(observed.rankIndex)
+      )
+    end
   end
   lines[#lines+1]=""
   lines[#lines+1]="Greater assignments:"

@@ -251,7 +251,7 @@ function CBC:RefreshRoster()
             provider.provisional = true
             provider.categories = {}
             for category, family in pairs(self.familyByProviderCategory[token] or {}) do
-              provider.categories[category] = {
+              local capability = {
                 category=category,family=family.key,provider=token,tier=family.tier,
                 independent=family.independent,
                 single=family.singleIDs[#family.singleIDs],greater=family.greaterIDs[#family.greaterIDs],
@@ -260,6 +260,19 @@ function CBC:RefreshRoster()
                 greaterEffect=self:GetSpellEffect(family.greaterIDs[#family.greaterIDs]),
                 provisional=true,
               }
+              local observed = provider.observedCapabilities and provider.observedCapabilities[category]
+              if observed and observed.family == family.key then
+                if observed.form == "single" then
+                  capability.single = observed.spellID
+                  capability.singleRank = observed.rankIndex
+                  capability.singleEffect = self:GetSpellEffect(observed.spellID)
+                elseif observed.form == "greater" then
+                  capability.greater = observed.spellID
+                  capability.greaterRank = observed.rankIndex
+                  capability.greaterEffect = self:GetSpellEffect(observed.spellID)
+                end
+              end
+              provider.categories[category] = capability
             end
           end
           self.providers[guid] = provider

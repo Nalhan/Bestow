@@ -11,6 +11,37 @@ local function BetterAura(candidate, current)
   return candidateLeft > currentLeft
 end
 
+function CBC:ObserveProviderCapability(provider, match, spellID, reportedRank)
+  if not provider or not provider.provisional or not spellID then return false end
+  if provider.classToken ~= match.provider then return false end
+  provider.observedCapabilities = provider.observedCapabilities or {}
+  local observed = provider.observedCapabilities[match.category]
+  local rankIndex = reportedRank or match.rankIndex
+  if observed
+    and observed.family == match.family
+    and observed.form == match.form
+    and observed.spellID == spellID
+    and observed.rankIndex == rankIndex
+  then
+    return false
+  end
+  provider.observedCapabilities[match.category] = {
+    family=match.family,
+    form=match.form,
+    spellID=spellID,
+    rankIndex=rankIndex,
+  }
+  local setPrimary = not provider.observedCategory
+    or (match.form == "greater" and provider.observedForm ~= "greater")
+    or (match.form == "greater" and provider.observedFamily ~= match.family)
+  if setPrimary then
+    provider.observedCategory = match.category
+    provider.observedFamily = match.family
+    provider.observedForm = match.form
+  end
+  return true
+end
+
 function CBC:ScanAuras()
   self.coverage = self.coverage or {}
   wipe(self.coverage)
@@ -44,15 +75,7 @@ function CBC:ScanAuras()
             unitCoverage[match.category] = aura
           end
           local observedProvider = casterGUID and self.providers[casterGUID]
-          local shouldObserve = observedProvider and observedProvider.provisional and (
-            not observedProvider.observedCategory
-            or (match.form == "greater" and observedProvider.observedForm ~= "greater")
-            or (match.form == "greater" and observedProvider.observedFamily ~= match.family)
-          )
-          if shouldObserve then
-            observedProvider.observedCategory = match.category
-            observedProvider.observedFamily = match.family
-            observedProvider.observedForm = match.form
+          if self:ObserveProviderCapability(observedProvider, match, spellID, reportedRank) then
             observedChanged = true
           end
         end
