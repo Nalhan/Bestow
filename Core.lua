@@ -14,6 +14,7 @@ CBC.providers = {}
 CBC.roster = {}
 CBC.rosterByGUID = {}
 CBC.rosterByName = {}
+CBC.externalSpecCache = {}
 CBC.actions = {}
 CBC.assignment = {
   cells = {}, greaterByCategory = {}, greaterCategoriesByProvider = {},
@@ -125,6 +126,7 @@ function CBC:Initialize()
   self:BuildClassIndexes()
   self:BuildCatalogIndexes()
   self:BuildPreferenceDefaults()
+  self:RegisterExternalSpecResolver()
   self:CreateUI()
   if RegisterAddonMessagePrefix then RegisterAddonMessagePrefix(self.prefix) end
   self:ScanSpellbook()
@@ -146,7 +148,11 @@ for _, event in ipairs(registered) do eventFrame:RegisterEvent(event) end
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
-    if ... == CBC.name then CBC:Initialize() end
+    if ... == CBC.name then
+      CBC:Initialize()
+    elseif CBC.db then
+      CBC:RegisterExternalSpecResolver()
+    end
     return
   end
   if not CBC.db then return end

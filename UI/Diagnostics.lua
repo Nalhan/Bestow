@@ -117,6 +117,8 @@ function CBC:BuildDiagnosticText()
     tostring(source.sha256 or "missing")
   )
   lines[#lines+1]="Stat source: "..tostring(source.moduleURL or "missing")
+  local specLibrary,specLibrarySource=self:GetExternalSpecLibrary()
+  lines[#lines+1]="External spec resolver: "..(specLibrary and tostring(specLibrarySource) or "unavailable")
   lines[#lines+1]="Individual gain threshold: "..tostring(self.db.individualAssignmentThreshold)
   lines[#lines+1]="Known local capabilities:"
   local localMember=self.rosterByGUID[UnitGUID("player")]
@@ -137,7 +139,11 @@ function CBC:BuildDiagnosticText()
   lines[#lines+1]="Roster/providers:"
   for _,member in ipairs(self.roster) do
     local provider=self.providers[member.guid]
-    lines[#lines+1]=string.format("  %s %s spec=%s(%s) addon=%s provisional=%s",member.name,member.classToken,tostring(member.specName),tostring(member.specID),tostring(provider and provider.addon),tostring(provider and provider.provisional))
+    lines[#lines+1]=string.format(
+      "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s",
+      member.name,member.classToken,tostring(member.specName),tostring(member.specID),
+      tostring(member.specSource),tostring(provider and provider.addon),tostring(provider and provider.provisional)
+    )
   end
   lines[#lines+1]=""
   lines[#lines+1]="Greater assignments:"

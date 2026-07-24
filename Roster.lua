@@ -13,9 +13,66 @@ local function UnitList()
   return units
 end
 
+function CBC:GetExternalSpecLibrary()
+  if LibStub then
+    local library = LibStub("LibGroupTalents-1.0", true)
+    if library and library.GetUnitTalentSpec then
+      return library, "LibGroupTalents"
+    end
+  end
+end
+
+function CBC:ResolveExternalSpecValue(value, unit)
+  local spec
+  if type(value) == "number" then
+    spec = self.specsByID[value]
+  elseif value then
+    spec = self.specsByName[self:Normalize(value)]
+  end
+  if not spec then return nil end
+
+  if unit then
+    local _, unitClass = UnitClass(unit)
+    unitClass = self:ResolveClassToken(unitClass)
+    if unitClass and spec.classToken ~= unitClass then return nil end
+  end
+  return spec
+end
+
+function CBC:CacheExternalSpec(guid, unit, value, source)
+  local spec = self:ResolveExternalSpecValue(value, unit)
+  if not spec or not guid then return nil end
+  self.externalSpecCache[guid] = {
+    id=spec.id,
+    name=spec.name,
+    source=source or "LibGroupTalents",
+  }
+  return spec
+end
+
+function CBC:OnLibGroupTalentsUpdate(_, guid, unit, newSpec)
+  local _, source = self:GetExternalSpecLibrary()
+  self:CacheExternalSpec(guid, unit, newSpec, source)
+  self:ScheduleRebuild("LibGroupTalents update", 0.05)
+end
+
+function CBC:OnLibGroupTalentsUpdateComplete()
+  self:ScheduleRebuild("LibGroupTalents complete", 0.05)
+end
+
+function CBC:RegisterExternalSpecResolver()
+  local library, source = self:GetExternalSpecLibrary()
+  if not library or not library.RegisterCallback or self.externalSpecLibrary == library then return end
+  self.externalSpecLibrary = library
+  self.externalSpecSource = source
+  library.RegisterCallback(self, "LibGroupTalents_Update", "OnLibGroupTalentsUpdate")
+  library.RegisterCallback(self, "LibGroupTalents_UpdateComplete", "OnLibGroupTalentsUpdateComplete")
+  self:Debug("External spec resolver attached: " .. source)
+end
+
 function CBC:ResolveSpec(unit, guid)
   local provider = guid and self.providers[guid]
-  if provider and provider.specID and self.specsByID[provider.specID] then
+  if provider and provider.addon and provider.specID and self.specsByID[provider.specID] then
     return provider.specID, self.specsByID[provider.specID].name, "addon"
   end
   if UnitIsUnit(unit, "player") then
@@ -28,11 +85,22 @@ function CBC:ResolveSpec(unit, guid)
       if spec then return spec.id, spec.name, "client" end
     end
   end
-  local lgt = WeakAuras and WeakAuras.LGT
-  if lgt and lgt.GetUnitTalentSpec then
-    local name = lgt:GetUnitTalentSpec(unit)
-    local spec = self.specsByName[self:Normalize(name)]
-    if spec then return spec.id, spec.name, "LibGroupTalents" end
+
+  self:RegisterExternalSpecResolver()
+  local library, source = self:GetExternalSpecLibrary()
+  if library then
+    local value = library:GetUnitTalentSpec(unit)
+    local spec = self:CacheExternalSpec(guid, unit, value, source)
+    if spec then return spec.id, spec.name, source end
+  end
+
+  local cached = guid and self.externalSpecCache[guid]
+  if cached then
+    return cached.id, cached.name, cached.source .. " cache"
+  end
+
+  if library and library.RefreshTalentsByUnit then
+    library:RefreshTalentsByUnit(unit)
   end
   return nil, nil, "unknown"
 end
@@ -109,6 +177,7 @@ function CBC:RefreshSession()
     -- when first loading or after an actual group disbands.
     if self.groupSessionActive or not self.soloSession then
       self.db.session = nil
+      wipe(self.externalSpecCache)
       self.soloSession = {
         key=UnitGUID("player") or "solo",
         header={},cells={},providerOverrides={},revision=0,
