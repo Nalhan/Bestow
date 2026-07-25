@@ -392,14 +392,14 @@ function CBC:BuildCompactRows()
   end
   for recipientGUID, categories in pairs(targets) do
     for category in pairs(categories) do
+    if not greater[category] then
     local member = self.rosterByGUID[recipientGUID]
     local cap = provider and provider.categories and provider.categories[category]
     if member and cap then
-      local state, aura = self:CoverageState(recipientGUID,category,cap,greater[category] == true)
+      local state, aura = self:CoverageState(recipientGUID,category,cap,false)
       local action = actionByTargetCategory[recipientGUID..":"..category]
-      -- Every assigned recipient gets a stable row, including recipients
-      -- covered by our Greater default. A known single-target form makes the
-      -- row directly clickable even when no reminder is currently queued.
+      -- Greater coverage is represented by the shared header action. Keep
+      -- compact recipient rows exclusive to individual assignments.
       if not action and cap.single then
         local id, name, rank, icon = self:GetCastSpell(cap, false)
         local cell = self.assignment.cells[recipientGUID] and self.assignment.cells[recipientGUID][category]
@@ -415,8 +415,9 @@ function CBC:BuildCompactRows()
       end
       rows[#rows+1] = {
         member=member,category=category,cap=cap,state=state,aura=aura,
-        action=action,delivery=greater[category] and "greater" or "individual",
+        action=action,delivery="individual",
       }
+    end
     end
     end
   end
