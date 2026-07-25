@@ -17,13 +17,14 @@ function CBC:ObserveProviderCapability(provider, match, spellID, reportedRank)
   provider.observedCapabilities = provider.observedCapabilities or {}
   local observed = provider.observedCapabilities[match.category]
   local rankIndex = reportedRank or match.rankIndex
-  if observed
-    and observed.family == match.family
-    and observed.form == match.form
-    and observed.spellID == spellID
-    and observed.rankIndex == rankIndex
-  then
-    return false
+  if observed then
+    if observed.family ~= match.family then return false end
+    if observed.form == "greater" and match.form ~= "greater" then return false end
+    if observed.form == match.form then
+      local oldRank = tonumber(observed.rankIndex) or 0
+      local newRank = tonumber(rankIndex) or 0
+      if newRank <= oldRank then return false end
+    end
   end
   provider.observedCapabilities[match.category] = {
     family=match.family,
@@ -50,7 +51,7 @@ function CBC:ScanAuras()
     local unitCoverage = {}
     self.coverage[member.guid] = unitCoverage
     for index=1,40 do
-      local name, rank, icon, count, dispelType, duration, expires, caster, _, _, spellID = UnitBuff(member.unit, index)
+      local name, rank, icon, _, _, duration, expires, caster, _, _, spellID = UnitBuff(member.unit, index)
       if not name then break end
       local matches = (spellID and self.auraIDIndex[spellID]) or self.auraNameIndex[self:Normalize(name)]
       if matches then
