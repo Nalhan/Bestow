@@ -151,6 +151,8 @@ function CBC:BuildProfilerText()
       and ("active v" .. tostring(self.performanceFastPathVersion))
       or "NOT LOADED"
     ),
+    "Combat structural work deferred: " .. tostring(self.combatStructuralDirty == true),
+    "Last deferred reason: " .. tostring(self.combatDeferredReason),
   }
 
   local scriptProfile = _G.GetCVar and _G.GetCVar("scriptProfile") or "unavailable"

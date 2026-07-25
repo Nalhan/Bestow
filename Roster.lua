@@ -114,6 +114,7 @@ end
 function CBC:ProcessSpecInspectQueue()
   local api = self:GetCharacterAdvancementAPI()
   if not self.db or not api then return end
+  if InCombatLockdown and InCombatLockdown() then return end
   local now = GetTime()
   local active = self.specInspectActive
   if active and now - active.requestedAt < 5 then return end

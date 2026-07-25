@@ -5,7 +5,20 @@ local MATRIX_AURA_REFRESH_INTERVAL = 1.00
 local INSPECTION_BATCH_INTERVAL = 1.00
 local OBSERVATION_BATCH_INTERVAL = 0.50
 
-CBC.performanceFastPathVersion = 3
+CBC.performanceFastPathVersion = 4
+
+local function InCombat()
+  return InCombatLockdown and InCombatLockdown()
+end
+
+function CBC:DeferCombatStructuralWork(reason)
+  self.combatStructuralDirty = true
+  self.combatDeferredReason = reason or self.combatDeferredReason
+  self.inspectionRebuildAt = nil
+  self.observationRebuildAt = nil
+  self.rebuildAt = nil
+  self.rebuildReason = nil
+end
 
 function CBC:UpdateAssignmentAuraState()
   local frame = self.assignmentFrame
@@ -48,7 +61,9 @@ function CBC:RefreshAuraState()
   self:BuildActions(true)
   self:UpdateCompact()
   local now = GetTime()
-  if not self.nextMatrixAuraRefresh or now >= self.nextMatrixAuraRefresh then
+  if not InCombat()
+    and (not self.nextMatrixAuraRefresh or now >= self.nextMatrixAuraRefresh)
+  then
     self.nextMatrixAuraRefresh = now + MATRIX_AURA_REFRESH_INTERVAL
     self:UpdateAssignmentAuraState()
   end
@@ -57,10 +72,20 @@ end
 local originalScheduleRebuild = CBC.ScheduleRebuild
 CBC.ScheduleRebuild = function(self, reason, delay)
   if reason == "aura" then
-    local due = GetTime() + AURA_REFRESH_INTERVAL
+    local interval = InCombat() and 0.30 or AURA_REFRESH_INTERVAL
+    local due = GetTime() + interval
     if not self.auraRefreshAt or due < self.auraRefreshAt then
       self.auraRefreshAt = due
     end
+    return
+  end
+  if reason == "hover leave" then
+    self.compactRefreshAt = GetTime() + (delay or 0.25)
+    return
+  end
+  if InCombat() then
+    self:DeferCombatStructuralWork(reason)
+    if reason == "combat" then self.compactRefreshAt = GetTime() end
     return
   end
   if reason == "Character Advancement inspection"
@@ -73,20 +98,23 @@ CBC.ScheduleRebuild = function(self, reason, delay)
     self.observationRebuildAt = GetTime() + OBSERVATION_BATCH_INTERVAL
     return
   end
-  if reason == "hover leave" then
-    self.compactRefreshAt = GetTime() + (delay or 0.25)
-    return
-  end
   self.performancePendingReason = reason
   return originalScheduleRebuild(self, reason, delay)
 end
 
 local originalRebuild = CBC.Rebuild
 CBC.Rebuild = function(self, ...)
+  if InCombat() then
+    self:DeferCombatStructuralWork((...))
+    self.compactRefreshAt = GetTime()
+    return
+  end
   self.auraRefreshAt = nil
   self.auraDirtyUnits = {}
   self.inspectionRebuildAt = nil
   self.observationRebuildAt = nil
+  self.combatStructuralDirty = nil
+  self.combatDeferredReason = nil
   self.performancePendingReason = nil
   local results = {originalRebuild(self, ...)}
   if self.rebuildAt and not self.rebuildReason and self.performancePendingReason then
