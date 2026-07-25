@@ -1,6 +1,6 @@
 local _, CBC = ...
 
-local CELL_W, ROW_H, LABEL_W = 80, 23, 122
+local CELL_W, ROW_H, LABEL_W, GRID_LEFT = 80, 23, 122, 7
 
 local function MenuTitle(text)
   return {text=text,isTitle=true,notCheckable=true,disabled=true}
@@ -142,7 +142,7 @@ function CBC:CreateAssignmentPanel()
   for column,category in ipairs(self.CategoryOrder) do
     local button=CreateFrame("Button",nil,frame)
     button:SetWidth(CELL_W-2); button:SetHeight(38)
-    button:SetPoint("TOPLEFT",LABEL_W+(column-1)*CELL_W,-30)
+    button:SetPoint("TOPLEFT",GRID_LEFT+LABEL_W+(column-1)*CELL_W,-30)
     self.Pixel:Button(button,0.58)
     button.category=category
     button.label=button:CreateFontString(nil,"OVERLAY"); button.label:SetPoint("TOPLEFT",2,-3); button.label:SetPoint("TOPRIGHT",-2,-3); button.label:SetJustifyH("CENTER"); self:ApplyFont(button.label,9,"")
@@ -156,7 +156,7 @@ function CBC:CreateAssignmentPanel()
   end
 
   local scroll=CreateFrame("ScrollFrame","BestowAssignmentScroll",frame)
-  scroll:SetPoint("TOPLEFT",7,-72); scroll:SetPoint("BOTTOMRIGHT",-8,8)
+  scroll:SetPoint("TOPLEFT",GRID_LEFT,-72); scroll:SetPoint("BOTTOMRIGHT",-8,8)
   scroll:EnableMouseWheel(true)
   scroll:SetScript("OnMouseWheel", function(self, delta)
     local nextValue = self:GetVerticalScroll() - delta * ROW_H * 3
