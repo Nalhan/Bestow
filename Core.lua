@@ -128,7 +128,6 @@ function CBC:Initialize()
   self:BuildCatalogIndexes()
   self:BuildPreferenceDefaults()
   self:RegisterExternalSpecResolver()
-  self:RegisterSpecInspectHook()
   self:CreateUI()
   if RegisterAddonMessagePrefix then RegisterAddonMessagePrefix(self.prefix) end
   self:ScanSpellbook()
@@ -145,7 +144,7 @@ local registered = {
   "UNIT_AURA", "CHAT_MSG_ADDON", "PLAYER_TALENT_UPDATE",
   "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_REGEN_DISABLED",
   "PLAYER_REGEN_ENABLED", "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED",
-  "INSPECT_TALENT_READY",
+  "INSPECT_CHARACTER_ADVANCEMENT_RESULT", "PLAYER_TARGET_CHANGED",
 }
 for _, event in ipairs(registered) do eventFrame:RegisterEvent(event) end
 
@@ -161,8 +160,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
   if not CBC.db then return end
   if event == "CHAT_MSG_ADDON" then
     CBC:OnAddonMessage(...)
-  elseif event == "INSPECT_TALENT_READY" then
-    CBC:OnSpecInspectReady()
+  elseif event == "INSPECT_CHARACTER_ADVANCEMENT_RESULT" then
+    CBC:OnCharacterAdvancementInspectResult()
   elseif event == "UNIT_AURA" then
     local unit = ...
     if unit and (unit == "player" or string.match(unit, "^party%d+$") or string.match(unit, "^raid%d+$")) then
@@ -229,6 +228,7 @@ SlashCmdList.BESTOW = function(message)
   elseif command == "tooltips" then
     if CBC.ShowSpellTooltipDump then CBC:ShowSpellTooltipDump() end
   elseif command == "rescan" then
+    CBC:ResetSpecInspections()
     CBC:ScanSpellbook()
     CBC:BroadcastState()
     CBC:Rebuild("manual rescan")

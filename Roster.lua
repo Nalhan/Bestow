@@ -42,6 +42,14 @@ end
 function CBC:CacheExternalSpec(guid, unit, value, source)
   local spec = self:ResolveExternalSpecValue(value, unit)
   if not spec or not guid then return nil end
+  local existing = self.externalSpecCache[guid]
+  local priority = {
+    ["LibGroupTalents"] = 1,
+    ["Character Advancement"] = 2,
+  }
+  if existing and (priority[existing.source] or 0) > (priority[source] or 0) then
+    return self.specsByID[existing.id]
+  end
   self.externalSpecCache[guid] = {
     id=spec.id,
     name=spec.name,
@@ -70,21 +78,11 @@ function CBC:RegisterExternalSpecResolver()
   self:Debug("External spec resolver attached: " .. source)
 end
 
-function CBC:RegisterSpecInspectHook()
-  if self.specInspectHooked or not hooksecurefunc or not NotifyInspect then return end
-  self.specInspectHooked = true
-  hooksecurefunc("NotifyInspect", function(unit)
-    if not unit then return end
-    local guid = UnitGUID(unit)
-    if guid then
-      CBC.specInspectActive = {
-        guid=guid,
-        unit=unit,
-        requestedAt=GetTime(),
-        owned=CBC.specInspectRequestGUID == guid,
-      }
-    end
-  end)
+function CBC:GetCharacterAdvancementAPI()
+  local api = _G.C_CharacterAdvancement
+  if api and type(api.InspectUnit) == "function" and type(api.GetInspectInfo) == "function" then
+    return api
+  end
 end
 
 function CBC:QueueSpecInspection(unit, guid)
@@ -92,6 +90,10 @@ function CBC:QueueSpecInspection(unit, guid)
   local queued = self.specInspectQueue[guid]
   if queued then
     queued.unit = unit
+    if queued.failed and UnitGUID("target") == guid then
+      queued.failed = nil
+      queued.nextAttempt = GetTime()
+    end
     return
   end
   self.specInspectQueue[guid] = {
@@ -104,83 +106,127 @@ end
 
 function CBC:CanRequestSpecInspection(unit)
   if not unit or not UnitExists(unit) or not UnitIsPlayer(unit) then return nil end
-  if not UnitIsConnected(unit) or not UnitIsVisible(unit) then return nil end
+  if not UnitIsConnected(unit) then return nil end
   if UnitCanAttack("player", unit) or UnitCanAttack(unit, "player") then return nil end
-  return not CanInspect or CanInspect(unit)
+  return self:GetCharacterAdvancementAPI() ~= nil
 end
 
 function CBC:ProcessSpecInspectQueue()
-  if not self.db or not NotifyInspect then return end
+  local api = self:GetCharacterAdvancementAPI()
+  if not self.db or not api then return end
   local now = GetTime()
   local active = self.specInspectActive
   if active and now - active.requestedAt < 5 then return end
+  if active then
+    local queued = self.specInspectQueue[active.guid]
+    if queued then
+      queued.nextAttempt = now + math.min(30, queued.attempts * 5)
+      if queued.attempts >= 3 then queued.failed = true end
+    end
+  end
   self.specInspectActive = nil
+
+  local targetGUID = UnitGUID("target")
+  local targetQueued = targetGUID and self.specInspectQueue[targetGUID]
+  if targetQueued and not self.externalSpecCache[targetGUID]
+    and self.rosterByGUID[targetGUID] and not targetQueued.failed
+    and now >= targetQueued.nextAttempt and self:CanRequestSpecInspection("target")
+  then
+    targetQueued.unit = "target"
+    targetQueued.attempts = targetQueued.attempts + 1
+    self.specInspectActive = {guid=targetGUID,unit="target",requestedAt=now}
+    api.InspectUnit("target")
+    return
+  end
 
   for guid, queued in pairs(self.specInspectQueue) do
     local cached = self.externalSpecCache[guid]
     if cached or not self.rosterByGUID[guid] then
       self.specInspectQueue[guid] = nil
-    elseif now >= queued.nextAttempt and self:CanRequestSpecInspection(queued.unit) then
+    elseif not queued.failed and now >= queued.nextAttempt and self:CanRequestSpecInspection(queued.unit) then
       queued.attempts = queued.attempts + 1
-      queued.nextAttempt = now + math.min(30, queued.attempts * 5)
-      self.specInspectRequestGUID = guid
-      NotifyInspect(queued.unit)
-      self.specInspectRequestGUID = nil
+      self.specInspectActive = {guid=guid,unit=queued.unit,requestedAt=now}
+      api.InspectUnit(queued.unit)
       return
     end
   end
 end
 
-function CBC:ReadInspectedSpec(unit)
-  if GetInspectSpecialization then
-    local spec = self:ResolveExternalSpecValue(GetInspectSpecialization(unit), unit)
-    if spec then return spec, "inspect ID" end
-  end
+function CBC:ResolveCharacterAdvancementSlot(unit, slot)
+  if type(slot) ~= "number" then return nil end
+  local _, token = UnitClass(unit)
+  token = self:ResolveClassToken(token)
+  if not token then return nil end
 
-  local bestName, bestPoints
-  local group = GetActiveTalentGroup and GetActiveTalentGroup(true) or nil
-  local tabs = GetNumTalentTabs and GetNumTalentTabs(true) or 3
-  for index=1,tabs do
-    local name, _, points = GetTalentTabInfo(index, true, nil, group)
-    points = tonumber(points) or 0
-    if name and (not bestPoints or points > bestPoints) then
-      bestName, bestPoints = name, points
-    end
-  end
-  if bestName and bestPoints and bestPoints > 0 then
-    return self:ResolveExternalSpecValue(bestName, unit), "inspect tree", bestName, bestPoints
-  end
+  local direct = self.specsByID[slot]
+  if direct and direct.classToken == token then return direct end
+
+  local class = self.Classes[token]
+  local raw = class and class.specs and class.specs[slot]
+  local fallback = raw and self.specsByID[raw[1]]
+  if fallback and fallback.classToken == token then return fallback end
 end
 
-function CBC:OnSpecInspectReady()
-  local active = self.specInspectActive
-  if not active or not active.unit or UnitGUID(active.unit) ~= active.guid then return end
-  if not self.rosterByGUID[active.guid] then
-    self.specInspectActive = nil
-    return
-  end
+function CBC:ReadCharacterAdvancementSpec(unit, guid)
+  local api = self:GetCharacterAdvancementAPI()
+  if not api or not unit or not guid or UnitGUID(unit) ~= guid then return nil end
+  local slot, unlocked = api.GetInspectInfo(unit)
+  local spec = self:ResolveCharacterAdvancementSlot(unit, slot)
+  if not spec then return nil, slot, unlocked end
+  self.externalSpecCache[guid] = {
+    id=spec.id,
+    name=spec.name,
+    source="Character Advancement",
+    slot=slot,
+    unlocked=unlocked,
+  }
+  return spec, slot, unlocked
+end
 
-  local spec, source, treeName, points = self:ReadInspectedSpec(active.unit)
+function CBC:OnCharacterAdvancementInspectResult()
+  local active = self.specInspectActive
+  local targetGUID = UnitGUID("target")
+  if targetGUID and self.rosterByGUID[targetGUID] then
+    local targetSpec, targetSlot = self:ReadCharacterAdvancementSpec("target", targetGUID)
+    if targetSpec then
+      self.specInspectQueue[targetGUID] = nil
+      self:Debug(string.format(
+        "Character Advancement spec: %s -> %s (%s), slot=%s",
+        tostring(self:FullName("target")), targetSpec.name, tostring(targetSpec.id), tostring(targetSlot)
+      ))
+      self:ScheduleRebuild("Character Advancement target inspection", 0.05)
+      if not active or active.guid == targetGUID then
+        self.specInspectActive = nil
+        return
+      end
+    end
+  end
+  if not active then return end
+  if not active.unit or UnitGUID(active.unit) ~= active.guid then return end
+
+  local spec, slot, unlocked = self:ReadCharacterAdvancementSpec(active.unit, active.guid)
+  if not spec and active.unit ~= "target" and UnitGUID("target") == active.guid then
+    spec, slot, unlocked = self:ReadCharacterAdvancementSpec("target", active.guid)
+  end
   if spec then
-    self:CacheExternalSpec(active.guid, active.unit, spec.id, source)
     self.specInspectQueue[active.guid] = nil
     self:Debug(string.format(
-      "Inspected spec: %s -> %s (%s)",
-      tostring(self:FullName(active.unit)), spec.name, source
+      "Character Advancement spec: %s -> %s (%s), slot=%s",
+      tostring(self:FullName(active.unit)), spec.name, tostring(spec.id), tostring(slot)
     ))
-    self:ScheduleRebuild("spec inspection", 0.05)
+    self:ScheduleRebuild("Character Advancement inspection", 0.05)
   else
     local queued = self.specInspectQueue[active.guid]
-    if queued then queued.nextAttempt = GetTime() + 5 end
+    if queued then
+      queued.nextAttempt = GetTime() + 5
+      if queued.attempts >= 3 then queued.failed = true end
+    end
     self:Debug(string.format(
-      "Spec inspection unresolved: %s tree=%s points=%s",
-      tostring(self:FullName(active.unit)), tostring(treeName), tostring(points)
+      "Character Advancement spec unresolved: %s slot=%s unlocked=%s",
+      tostring(self:FullName(active.unit)), tostring(slot), tostring(unlocked)
     ))
   end
   self.specInspectActive = nil
-  if active.owned and ClearInspectPlayer and (not InspectFrame or not InspectFrame:IsShown()) then
-    ClearInspectPlayer()
-  end
 end
 
 function CBC:ResolveSpec(unit, guid)
@@ -199,6 +245,11 @@ function CBC:ResolveSpec(unit, guid)
     end
   end
 
+  local cached = guid and self.externalSpecCache[guid]
+  if cached and cached.source == "Character Advancement" then
+    return cached.id, cached.name, cached.source .. " cache"
+  end
+
   self:RegisterExternalSpecResolver()
   local library, source = self:GetExternalSpecLibrary()
   if library then
@@ -207,13 +258,18 @@ function CBC:ResolveSpec(unit, guid)
     if spec then return spec.id, spec.name, source end
   end
 
-  local cached = guid and self.externalSpecCache[guid]
+  cached = guid and self.externalSpecCache[guid]
   if cached then
     return cached.id, cached.name, cached.source .. " cache"
   end
 
   self:QueueSpecInspection(unit, guid)
   return nil, nil, "unknown"
+end
+
+function CBC:ResetSpecInspections()
+  wipe(self.specInspectQueue)
+  self.specInspectActive = nil
 end
 
 function CBC:RefreshRoster()

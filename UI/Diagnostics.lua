@@ -117,6 +117,7 @@ function CBC:BuildDiagnosticText()
     tostring(source.sha256 or "missing")
   )
   lines[#lines+1]="Stat source: "..tostring(source.moduleURL or "missing")
+  lines[#lines+1]="Character Advancement resolver: "..(self:GetCharacterAdvancementAPI() and "available" or "unavailable")
   local specLibrary,specLibrarySource=self:GetExternalSpecLibrary()
   lines[#lines+1]="External spec resolver: "..(specLibrary and tostring(specLibrarySource) or "unavailable")
   lines[#lines+1]="Individual gain threshold: "..tostring(self.db.individualAssignmentThreshold)
@@ -140,12 +141,13 @@ function CBC:BuildDiagnosticText()
   for _,member in ipairs(self.roster) do
     local provider=self.providers[member.guid]
     local inspect=self.specInspectQueue[member.guid]
-    local inspectState=inspect and ("queued/"..tostring(inspect.attempts)) or "none"
+    local inspectState=inspect and ((inspect.failed and "failed/" or "queued/")..tostring(inspect.attempts)) or "none"
+    local cached=self.externalSpecCache[member.guid]
     lines[#lines+1]=string.format(
-      "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s inspect=%s visible=%s canInspect=%s",
+      "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s inspect=%s caSlot=%s",
       member.name,member.classToken,tostring(member.specName),tostring(member.specID),
       tostring(member.specSource),tostring(provider and provider.addon),tostring(provider and provider.provisional),
-      inspectState,tostring(UnitIsVisible(member.unit)),tostring(CanInspect and CanInspect(member.unit))
+      inspectState,tostring(cached and cached.slot)
     )
     for category,observed in pairs(provider and provider.observedCapabilities or {}) do
       lines[#lines+1]=string.format(
