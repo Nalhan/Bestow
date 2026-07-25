@@ -80,7 +80,15 @@ function CBC:AnnounceGreaterAssignments()
     local providerGUID = providerByCategory[category]
     local provider = providerGUID and self.providers[providerGUID]
     if provider then
-      entries[#entries+1] = self.Categories[category].short.."="..self:ShortName(provider.name)
+      local capability = provider.categories and provider.categories[category]
+      local spellID = capability and capability.greater
+      local spell = spellID and GetSpellLink and GetSpellLink(spellID)
+      if not spell and spellID then spell = GetSpellInfo(spellID) end
+      entries[#entries+1] = {
+        effect=self.Categories[category].label,
+        provider=self:ShortName(provider.name),
+        spell=spell,
+      }
     end
   end
   if #entries == 0 then
@@ -88,17 +96,31 @@ function CBC:AnnounceGreaterAssignments()
     return
   end
 
-  local firstPrefix, continuedPrefix = "Bestow Greaters: ", "Bestow Greaters (cont.): "
-  local line, prefix = firstPrefix, firstPrefix
+  local lines = {
+    "[Bestow] Greater raid buffs - each listed player casts:",
+  }
   for _, entry in ipairs(entries) do
-    local separator = line == prefix and "" or ", "
-    if string.len(line..separator..entry) > 240 then
-      SendChatMessage(line, channel)
-      prefix, line, separator = continuedPrefix, continuedPrefix, ""
-    end
-    line = line..separator..entry
+    local line = "[Bestow] " .. entry.effect .. " - " .. entry.provider
+    if entry.spell then line = line .. ": " .. entry.spell end
+    lines[#lines+1] = line
   end
-  if line ~= prefix then SendChatMessage(line, channel) end
+
+  self.announcementQueue = lines
+  self.announcementChannel = channel
+  self.announcementElapsed = 0.35
+  if not self.announcementFrame then
+    self.announcementFrame = CreateFrame("Frame")
+  end
+  self.announcementFrame:SetScript("OnUpdate", function(_, elapsed)
+    CBC.announcementElapsed = CBC.announcementElapsed + elapsed
+    if CBC.announcementElapsed < 0.35 then return end
+    CBC.announcementElapsed = 0
+    local nextLine = table.remove(CBC.announcementQueue, 1)
+    if nextLine then SendChatMessage(nextLine, CBC.announcementChannel) end
+    if #CBC.announcementQueue == 0 then
+      CBC.announcementFrame:SetScript("OnUpdate", nil)
+    end
+  end)
 end
 
 function CBC:CreateAssignmentPanel()
@@ -125,13 +147,13 @@ function CBC:CreateAssignmentPanel()
 
   local announce=CreateFrame("Button",nil,frame)
   announce:SetWidth(118); announce:SetHeight(20); announce:SetPoint("TOPRIGHT",-28,-4)
-  announce:SetText("Announce Greaters"); announce:SetNormalFontObject(GameFontNormalSmall)
+  announce:SetText("Report Greaters"); announce:SetNormalFontObject(GameFontNormalSmall)
   self.Pixel:Button(announce,0.48)
   announce:SetScript("OnClick",function() CBC:AnnounceGreaterAssignments() end)
   announce:SetScript("OnEnter",function(self)
     GameTooltip:SetOwner(self,"ANCHOR_BOTTOM")
-    GameTooltip:SetText("Announce Greater assignments")
-    GameTooltip:AddLine("Prints the current Greater provider for each assigned buff category in party or raid chat.",1,1,1,true)
+    GameTooltip:SetText("Report Greater assignments")
+    GameTooltip:AddLine("Posts a readable cast list with each effect, assigned player, and Greater spell to party or raid chat.",1,1,1,true)
     GameTooltip:Show()
   end)
   announce:SetScript("OnLeave",function() GameTooltip:Hide() end)
