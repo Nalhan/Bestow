@@ -2,7 +2,7 @@
 ## Title: Bestow
 ## Notes: Coordinates mutually exclusive group buffs for Conquest of Azeroth
 ## Author: bread
-## Version: 0.2.0-alpha
+## Version: 0.2.1-alpha
 ## SavedVariables: BestowDB, CoABuffCoordinatorDB
 
 Libs\LibStub\LibStub.lua

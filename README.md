@@ -73,7 +73,7 @@ its SHA-256. Bestow never contacts BisBeard from the game client.
 Build a release archive:
 
 ```text
-python scripts/package.py --version 0.2.0-alpha
+python scripts/package.py --version 0.2.1-alpha
 ```
 
 The generated ZIP contains one top-level `Bestow/` directory and is written

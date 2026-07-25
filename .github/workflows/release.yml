@@ -50,5 +50,4 @@ jobs:
             --title "Bestow ${RELEASE_VERSION#v}" \
             --generate-notes \
             "${release_flags[@]}" \
-            dist/Bestow-*.zip \
-            dist/Bestow-*.sha256
+            dist/Bestow-*.zip
