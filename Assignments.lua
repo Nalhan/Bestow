@@ -14,8 +14,13 @@ function CBC:CategoryDemand(category)
   local demand = 0
   for _, recipient in ipairs(self.roster) do
     local best = 0
-    for _, choice in ipairs(self:GetProviderChoices(category, true, recipient)) do
-      if choice.score > best then best = choice.score end
+    for guid, provider in pairs(self.providers) do
+      local member = self.rosterByGUID[guid]
+      local cap = provider.categories and provider.categories[category]
+      if member and member.online and cap and cap.greater then
+        local score = self:GetCapabilityScore(recipient, cap, true) or 0
+        if score > best then best = score end
+      end
     end
     demand = demand + best
   end
@@ -48,7 +53,7 @@ function CBC:GetProviderChoices(category, requireGreater, recipient)
   return choices
 end
 
-function CBC:BuildGreaterBaseline()
+function CBC:BuildGreaterBaseline(demandByCategory)
   local greater, independent, usedProviders, usedCategories = {}, {}, {}, {}
   for category, providerGUID in pairs(self.session.header or {}) do
     local provider = self.providers[providerGUID]
@@ -70,7 +75,11 @@ function CBC:BuildGreaterBaseline()
   end
   local categories = {}
   for _, category in ipairs(self.CategoryOrder) do
-    categories[#categories+1] = {key=category,demand=self:CategoryDemand(category),order=self.Categories[category].order}
+    categories[#categories+1] = {
+      key=category,
+      demand=demandByCategory[category] or 0,
+      order=self.Categories[category].order,
+    }
   end
   table.sort(categories, function(a,b)
     if a.demand ~= b.demand then return a.demand > b.demand end
@@ -179,7 +188,7 @@ function CBC:ApplyOverrides(cellsByRecipient)
   end
 end
 
-function CBC:DeriveGreater(cellsByRecipient, baseline, independentBaseline)
+function CBC:DeriveGreater(cellsByRecipient, baseline, independentBaseline, demandByCategory)
   local counts, result, usedProviders, usedCategories = {}, {}, {}, {}
   local function Assign(providerGUID, category, cap)
     if usedCategories[category] or (not cap.independent and usedProviders[providerGUID]) then return false end
@@ -205,7 +214,8 @@ function CBC:DeriveGreater(cellsByRecipient, baseline, independentBaseline)
       local cap = provider.categories and provider.categories[category]
       if cap and cap.greater then
         edges[#edges+1] = {
-          guid=guid,providerName=provider.name or guid,category=category,count=count,demand=self:CategoryDemand(category),
+          guid=guid,providerName=provider.name or guid,category=category,count=count,
+          demand=demandByCategory[category] or 0,
           tier=cap.tier,baseline=(baseline[guid] == category or independentBaseline[category] == guid) and 1 or 0,
           independent=cap.independent,
           order=self.Categories[category].order,
@@ -238,7 +248,11 @@ function CBC:DeriveGreater(cellsByRecipient, baseline, independentBaseline)
 end
 
 function CBC:BuildAssignments()
-  local baseline, independentBaseline = self:BuildGreaterBaseline()
+  local demandByCategory = {}
+  for _, category in ipairs(self.CategoryOrder) do
+    demandByCategory[category] = self:CategoryDemand(category)
+  end
+  local baseline, independentBaseline = self:BuildGreaterBaseline(demandByCategory)
   local cellsByRecipient = {}
   local raid = IsRaid()
   for _, member in ipairs(self.roster) do
@@ -267,7 +281,12 @@ function CBC:BuildAssignments()
       self:FillAvailableAssignments(member, cellsByRecipient[member.guid], baseline)
     end
   end
-  local greaterByCategory = self:DeriveGreater(cellsByRecipient, baseline, independentBaseline)
+  local greaterByCategory = self:DeriveGreater(
+    cellsByRecipient,
+    baseline,
+    independentBaseline,
+    demandByCategory
+  )
   local providerCategoriesByTarget, greaterCategoriesByProvider = {}, {}
   for recipientGUID, cells in pairs(cellsByRecipient) do
     for category, cell in pairs(cells) do

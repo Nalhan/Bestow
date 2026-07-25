@@ -13,6 +13,8 @@ local PROFILE_TARGETS = {
   "ScanAuras",
   "UpdateCompact",
   "UpdateAssignmentPanel",
+  "UpdateAssignmentAuraState",
+  "RefreshAuraState",
   "UpdateDurations",
   "ProcessSpecInspectQueue",
   "OnAddonMessage",
