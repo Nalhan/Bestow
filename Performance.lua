@@ -3,8 +3,9 @@ local _, CBC = ...
 local AURA_REFRESH_INTERVAL = 0.20
 local MATRIX_AURA_REFRESH_INTERVAL = 1.00
 local INSPECTION_BATCH_INTERVAL = 1.00
+local OBSERVATION_BATCH_INTERVAL = 0.50
 
-CBC.performanceFastPathVersion = 2
+CBC.performanceFastPathVersion = 3
 
 function CBC:UpdateAssignmentAuraState()
   local frame = self.assignmentFrame
@@ -43,7 +44,8 @@ end
 
 function CBC:RefreshAuraState()
   if not self.db then return end
-  self:BuildActions()
+  self:ScanDirtyAuras()
+  self:BuildActions(true)
   self:UpdateCompact()
   local now = GetTime()
   if not self.nextMatrixAuraRefresh or now >= self.nextMatrixAuraRefresh then
@@ -67,6 +69,14 @@ CBC.ScheduleRebuild = function(self, reason, delay)
     self.inspectionRebuildAt = GetTime() + INSPECTION_BATCH_INTERVAL
     return
   end
+  if reason == "observed provisional provider" then
+    self.observationRebuildAt = GetTime() + OBSERVATION_BATCH_INTERVAL
+    return
+  end
+  if reason == "hover leave" then
+    self.compactRefreshAt = GetTime() + (delay or 0.25)
+    return
+  end
   self.performancePendingReason = reason
   return originalScheduleRebuild(self, reason, delay)
 end
@@ -74,7 +84,9 @@ end
 local originalRebuild = CBC.Rebuild
 CBC.Rebuild = function(self, ...)
   self.auraRefreshAt = nil
+  self.auraDirtyUnits = {}
   self.inspectionRebuildAt = nil
+  self.observationRebuildAt = nil
   self.performancePendingReason = nil
   local results = {originalRebuild(self, ...)}
   if self.rebuildAt and not self.rebuildReason and self.performancePendingReason then
@@ -84,11 +96,28 @@ CBC.Rebuild = function(self, ...)
 end
 
 local frame = CreateFrame("Frame")
+frame:RegisterEvent("UNIT_AURA")
+frame:SetScript("OnEvent", function(_, _, unit)
+  local guid = unit and UnitGUID(unit)
+  if guid and CBC.rosterByGUID[guid] then
+    CBC.auraDirtyUnits = CBC.auraDirtyUnits or {}
+    CBC.auraDirtyUnits[guid] = true
+  end
+end)
 frame:SetScript("OnUpdate", function()
   if CBC.inspectionRebuildAt and GetTime() >= CBC.inspectionRebuildAt then
     CBC.inspectionRebuildAt = nil
     CBC:Rebuild("Character Advancement batch")
     return
+  end
+  if CBC.observationRebuildAt and GetTime() >= CBC.observationRebuildAt then
+    CBC.observationRebuildAt = nil
+    CBC:Rebuild("observed provider batch")
+    return
+  end
+  if CBC.compactRefreshAt and GetTime() >= CBC.compactRefreshAt then
+    CBC.compactRefreshAt = nil
+    if not CBC.rebuildAt then CBC:UpdateCompact() end
   end
   if CBC.auraRefreshAt and GetTime() >= CBC.auraRefreshAt then
     CBC.auraRefreshAt = nil

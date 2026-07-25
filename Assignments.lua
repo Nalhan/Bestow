@@ -315,8 +315,8 @@ local function ActionSort(a,b)
   return a.category < b.category
 end
 
-function CBC:BuildActions()
-  self:ScanAuras()
+function CBC:BuildActions(coverageReady)
+  if not coverageReady then self:ScanAuras() end
   wipe(self.actions)
   local playerGUID = UnitGUID("player")
   local provider = self.providers[playerGUID]

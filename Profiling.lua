@@ -11,6 +11,7 @@ local PROFILE_TARGETS = {
   "BuildAssignments",
   "BuildActions",
   "ScanAuras",
+  "ScanDirtyAuras",
   "UpdateCompact",
   "UpdateAssignmentPanel",
   "UpdateAssignmentAuraState",

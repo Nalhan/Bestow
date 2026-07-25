@@ -43,44 +43,68 @@ function CBC:ObserveProviderCapability(provider, match, spellID, reportedRank)
   return true
 end
 
+function CBC:ScanUnitAuras(member)
+  self.coverage = self.coverage or {}
+  local unitCoverage = {}
+  self.coverage[member.guid] = unitCoverage
+  local observedChanged = false
+  for index=1,40 do
+    local name, rank, icon, _, _, duration, expires, caster, _, _, spellID = UnitBuff(member.unit, index)
+    if not name then break end
+    local matches = (spellID and self.auraIDIndex[spellID]) or self.auraNameIndex[self:Normalize(name)]
+    if matches then
+      local casterGUID = caster and UnitGUID(caster)
+      local casterName = caster and self:FullName(caster)
+      local reportedRank = tonumber(string.match(rank or "", "(%d+)"))
+      for _, match in ipairs(matches) do
+        local aura = {
+          category=match.category,family=match.family,tier=match.tier,
+          form=match.form,rankIndex=reportedRank or match.rankIndex,
+          rankReported=reportedRank ~= nil,
+          providerToken=match.provider,name=name,rank=rank,icon=icon,
+          duration=duration or 0,expires=expires or 0,caster=caster,
+          casterGUID=casterGUID,casterName=casterName,spellID=spellID,
+        }
+        local effect = spellID and self:GetSpellEffect(spellID)
+        if effect then
+          aura.score, aura.baseScore, aura.rawValue, aura.bonusPoints =
+            self:GetNormalizedEffectScore(member.specID, effect, member.unit, match.family, spellID)
+        end
+        if BetterAura(aura, unitCoverage[match.category]) then
+          unitCoverage[match.category] = aura
+        end
+        local observedProvider = casterGUID and self.providers[casterGUID]
+        if self:ObserveProviderCapability(observedProvider, match, spellID, reportedRank) then
+          observedChanged = true
+        end
+      end
+    end
+  end
+  return observedChanged
+end
+
 function CBC:ScanAuras()
   self.coverage = self.coverage or {}
   wipe(self.coverage)
   local observedChanged = false
   for _, member in ipairs(self.roster) do
-    local unitCoverage = {}
-    self.coverage[member.guid] = unitCoverage
-    for index=1,40 do
-      local name, rank, icon, _, _, duration, expires, caster, _, _, spellID = UnitBuff(member.unit, index)
-      if not name then break end
-      local matches = (spellID and self.auraIDIndex[spellID]) or self.auraNameIndex[self:Normalize(name)]
-      if matches then
-        local casterGUID = caster and UnitGUID(caster)
-        local casterName = caster and self:FullName(caster)
-        local reportedRank = tonumber(string.match(rank or "", "(%d+)"))
-        for _, match in ipairs(matches) do
-          local aura = {
-            category=match.category,family=match.family,tier=match.tier,
-            form=match.form,rankIndex=reportedRank or match.rankIndex,
-            rankReported=reportedRank ~= nil,
-            providerToken=match.provider,name=name,rank=rank,icon=icon,
-            duration=duration or 0,expires=expires or 0,caster=caster,
-            casterGUID=casterGUID,casterName=casterName,spellID=spellID,
-          }
-          local effect = spellID and self:GetSpellEffect(spellID)
-          if effect then
-            aura.score, aura.baseScore, aura.rawValue, aura.bonusPoints =
-              self:GetNormalizedEffectScore(member.specID, effect, member.unit, match.family, spellID)
-          end
-          if BetterAura(aura, unitCoverage[match.category]) then
-            unitCoverage[match.category] = aura
-          end
-          local observedProvider = casterGUID and self.providers[casterGUID]
-          if self:ObserveProviderCapability(observedProvider, match, spellID, reportedRank) then
-            observedChanged = true
-          end
-        end
-      end
+    if self:ScanUnitAuras(member) then observedChanged = true end
+  end
+  if observedChanged then self:ScheduleRebuild("observed provisional provider", 0.05) end
+end
+
+function CBC:ScanDirtyAuras()
+  local dirty = self.auraDirtyUnits
+  self.auraDirtyUnits = {}
+  if not dirty or not next(dirty) then
+    self:ScanAuras()
+    return
+  end
+  local observedChanged = false
+  for guid in pairs(dirty) do
+    local member = self.rosterByGUID[guid]
+    if member and UnitGUID(member.unit) == guid and self:ScanUnitAuras(member) then
+      observedChanged = true
     end
   end
   if observedChanged then self:ScheduleRebuild("observed provisional provider", 0.05) end
