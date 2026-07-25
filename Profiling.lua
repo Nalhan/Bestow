@@ -17,6 +17,7 @@ local PROFILE_TARGETS = {
   "RefreshAuraState",
   "UpdateDurations",
   "ProcessSpecInspectQueue",
+  "OnCharacterAdvancementInspectResult",
   "OnAddonMessage",
   "BroadcastState",
   "ScanSpellbook",
@@ -144,6 +145,11 @@ function CBC:BuildProfilerText()
   local data = self.profileData
   local lines = {
     "Performance profiling: " .. enabled,
+    "Performance fast path: " .. (
+      self.performanceFastPathVersion
+      and ("active v" .. tostring(self.performanceFastPathVersion))
+      or "NOT LOADED"
+    ),
   }
 
   local scriptProfile = _G.GetCVar and _G.GetCVar("scriptProfile") or "unavailable"

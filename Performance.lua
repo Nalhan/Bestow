@@ -2,6 +2,9 @@ local _, CBC = ...
 
 local AURA_REFRESH_INTERVAL = 0.20
 local MATRIX_AURA_REFRESH_INTERVAL = 1.00
+local INSPECTION_BATCH_INTERVAL = 1.00
+
+CBC.performanceFastPathVersion = 1
 
 function CBC:UpdateAssignmentAuraState()
   local frame = self.assignmentFrame
@@ -58,17 +61,29 @@ CBC.ScheduleRebuild = function(self, reason, delay)
     end
     return
   end
+  if reason == "Character Advancement inspection"
+    or reason == "Character Advancement target inspection"
+  then
+    self.inspectionRebuildAt = GetTime() + INSPECTION_BATCH_INTERVAL
+    return
+  end
   return originalScheduleRebuild(self, reason, delay)
 end
 
 local originalRebuild = CBC.Rebuild
 CBC.Rebuild = function(self, ...)
   self.auraRefreshAt = nil
+  self.inspectionRebuildAt = nil
   return originalRebuild(self, ...)
 end
 
 local frame = CreateFrame("Frame")
 frame:SetScript("OnUpdate", function()
+  if CBC.inspectionRebuildAt and GetTime() >= CBC.inspectionRebuildAt then
+    CBC.inspectionRebuildAt = nil
+    CBC:Rebuild("Character Advancement batch")
+    return
+  end
   if CBC.auraRefreshAt and GetTime() >= CBC.auraRefreshAt then
     CBC.auraRefreshAt = nil
     if not CBC.rebuildAt then CBC:RefreshAuraState() end
