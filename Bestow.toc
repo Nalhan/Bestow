@@ -27,3 +27,4 @@ UI\Options.lua
 UI\Compact.lua
 UI\Assignments.lua
 UI\Diagnostics.lua
+Profiling.lua
