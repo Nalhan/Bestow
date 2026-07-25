@@ -141,7 +141,18 @@ function CBC:BuildDiagnosticText()
   for _,member in ipairs(self.roster) do
     local provider=self.providers[member.guid]
     local inspect=self.specInspectQueue[member.guid]
-    local inspectState=inspect and ((inspect.failed and "failed/" or "queued/")..tostring(inspect.attempts)) or "none"
+    local inspectState="none"
+    if inspect then
+      if inspect.unavailable then
+        inspectState="waiting-range"
+      elseif inspect.cooldownUntil and inspect.cooldownUntil > GetTime() then
+        inspectState="cooldown/"..math.ceil(inspect.cooldownUntil-GetTime()).."s"
+      else
+        inspectState="queued/"..tostring(inspect.attempts)
+      end
+      inspectState=inspectState.."/total="..tostring(inspect.totalAttempts or 0)
+      if inspect.lastFailure then inspectState=inspectState.."/last="..inspect.lastFailure end
+    end
     local cached=self.externalSpecCache[member.guid]
     lines[#lines+1]=string.format(
       "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s inspect=%s caSlot=%s",

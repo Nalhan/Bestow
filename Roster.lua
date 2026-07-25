@@ -1,5 +1,9 @@
 local _, CBC = ...
 
+local INSPECT_MAX_ATTEMPTS = 3
+local INSPECT_RETRY_DELAY = 5
+local INSPECT_COOLDOWN = 30
+
 local function UnitList()
   local units = {}
   local raid = GetNumRaidMembers and GetNumRaidMembers() or 0
@@ -90,8 +94,10 @@ function CBC:QueueSpecInspection(unit, guid)
   local queued = self.specInspectQueue[guid]
   if queued then
     queued.unit = unit
-    if queued.failed and UnitGUID("target") == guid then
-      queued.failed = nil
+    if UnitGUID("target") == guid then
+      queued.attempts = 0
+      queued.cooldownUntil = nil
+      queued.unavailable = nil
       queued.nextAttempt = GetTime()
     end
     return
@@ -100,15 +106,47 @@ function CBC:QueueSpecInspection(unit, guid)
     guid=guid,
     unit=unit,
     attempts=0,
+    totalAttempts=0,
     nextAttempt=GetTime(),
   }
+end
+
+function CBC:IsSpecInspectionInRange(unit)
+  local unitInRange = _G.UnitInRange
+  if unitInRange then
+    local inRange = unitInRange(unit)
+    return inRange == true or inRange == 1
+  end
+  local checkInteractDistance = _G.CheckInteractDistance
+  if checkInteractDistance then
+    local inRange = checkInteractDistance(unit, 1)
+    return inRange == true or inRange == 1
+  end
+  local unitIsVisible = _G.UnitIsVisible
+  if unitIsVisible then
+    local visible = unitIsVisible(unit)
+    return visible == true or visible == 1
+  end
+  return true
 end
 
 function CBC:CanRequestSpecInspection(unit)
   if not unit or not UnitExists(unit) or not UnitIsPlayer(unit) then return nil end
   if not UnitIsConnected(unit) then return nil end
+  if not self:IsSpecInspectionInRange(unit) then return nil end
   if UnitCanAttack("player", unit) or UnitCanAttack(unit, "player") then return nil end
   return self:GetCharacterAdvancementAPI() ~= nil
+end
+
+function CBC:DelaySpecInspection(queued, now, failure)
+  if not queued then return end
+  queued.lastFailure = failure
+  if queued.attempts >= INSPECT_MAX_ATTEMPTS then
+    queued.cooldownUntil = now + INSPECT_COOLDOWN
+    queued.nextAttempt = queued.cooldownUntil
+  else
+    queued.nextAttempt = now + INSPECT_RETRY_DELAY
+  end
 end
 
 function CBC:ProcessSpecInspectQueue()
@@ -120,21 +158,21 @@ function CBC:ProcessSpecInspectQueue()
   if active and now - active.requestedAt < 5 then return end
   if active then
     local queued = self.specInspectQueue[active.guid]
-    if queued then
-      queued.nextAttempt = now + math.min(30, queued.attempts * 5)
-      if queued.attempts >= 3 then queued.failed = true end
-    end
+    self:DelaySpecInspection(queued, now, "timeout")
   end
   self.specInspectActive = nil
 
   local targetGUID = UnitGUID("target")
   local targetQueued = targetGUID and self.specInspectQueue[targetGUID]
   if targetQueued and not self.externalSpecCache[targetGUID]
-    and self.rosterByGUID[targetGUID] and not targetQueued.failed
+    and self.rosterByGUID[targetGUID]
     and now >= targetQueued.nextAttempt and self:CanRequestSpecInspection("target")
   then
+    targetQueued.cooldownUntil = nil
+    targetQueued.unavailable = nil
     targetQueued.unit = "target"
     targetQueued.attempts = targetQueued.attempts + 1
+    targetQueued.totalAttempts = targetQueued.totalAttempts + 1
     self.specInspectActive = {guid=targetGUID,unit="target",requestedAt=now}
     api.InspectUnit("target")
     return
@@ -144,11 +182,29 @@ function CBC:ProcessSpecInspectQueue()
     local cached = self.externalSpecCache[guid]
     if cached or not self.rosterByGUID[guid] then
       self.specInspectQueue[guid] = nil
-    elseif not queued.failed and now >= queued.nextAttempt and self:CanRequestSpecInspection(queued.unit) then
-      queued.attempts = queued.attempts + 1
-      self.specInspectActive = {guid=guid,unit=queued.unit,requestedAt=now}
-      api.InspectUnit(queued.unit)
-      return
+    else
+      local requestable = self:CanRequestSpecInspection(queued.unit)
+      if not requestable then
+        queued.unavailable = true
+      else
+        if queued.unavailable then
+          queued.unavailable = nil
+          queued.cooldownUntil = nil
+          queued.attempts = 0
+          queued.nextAttempt = now
+        elseif queued.cooldownUntil and now >= queued.cooldownUntil then
+          queued.cooldownUntil = nil
+          queued.attempts = 0
+          queued.nextAttempt = now
+        end
+        if not queued.cooldownUntil and now >= queued.nextAttempt then
+          queued.attempts = queued.attempts + 1
+          queued.totalAttempts = queued.totalAttempts + 1
+          self.specInspectActive = {guid=guid,unit=queued.unit,requestedAt=now}
+          api.InspectUnit(queued.unit)
+          return
+        end
+      end
     end
   end
 end
@@ -218,10 +274,7 @@ function CBC:OnCharacterAdvancementInspectResult()
     self:ScheduleRebuild("Character Advancement inspection", 0.05)
   else
     local queued = self.specInspectQueue[active.guid]
-    if queued then
-      queued.nextAttempt = GetTime() + 5
-      if queued.attempts >= 3 then queued.failed = true end
-    end
+    self:DelaySpecInspection(queued, GetTime(), "unresolved")
     self:Debug(string.format(
       "Character Advancement spec unresolved: %s slot=%s unlocked=%s",
       tostring(self:FullName(active.unit)), tostring(slot), tostring(unlocked)
