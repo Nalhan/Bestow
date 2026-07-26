@@ -20,12 +20,16 @@ end
 
 local function ConfigureSecureAction(button, action)
   if InCombatLockdown and InCombatLockdown() then return end
+  button._cbcAction = action
   local signature = action and table.concat({
-    action.spellName or "", action.mass and "mass" or (action.unit or "player")
+    tostring(action.spellID or ""),
+    action.spellName or "",
+    action.category or "",
+    action.targetGUID or "",
+    action.mass and "mass" or (action.unit or "player"),
   }, "|") or false
   if button._cbcActionSignature == signature then return end
   button._cbcActionSignature = signature
-  button._cbcAction = action
   button:SetAttribute("type", nil)
   button:SetAttribute("macrotext", nil)
   button:SetAttribute("spell", nil)
@@ -36,23 +40,57 @@ local function ConfigureSecureAction(button, action)
   button:SetAttribute("unit", action.mass and "player" or (action.unit or "player"))
 end
 
+local function BlockSecureClick(button, reason)
+  button._cbcBlockedReason = reason
+  button:SetAttribute("type", nil)
+end
+
 local function SecurePreClick(button)
   if InCombatLockdown and InCombatLockdown() then return end
+  button._cbcBlockedReason = nil
   local action = button._cbcAction
-  if not action or action.mass or not IsSpellInRange then return end
-  if IsSpellInRange(action.spellName, action.unit) == 0 then
-    button._cbcRangeBlocked = true
-    button:SetAttribute("type", nil)
+  if not action or action.mass then return end
+
+  if not action.targetGUID or not action.unit or UnitGUID(action.unit) ~= action.targetGUID then
+    BlockSecureClick(button, "Target changed before the buff could be cast.")
+    return
+  end
+
+  local playerGUID = UnitGUID("player")
+  local cells = CBC.assignment and CBC.assignment.cells
+  local cell = cells and cells[action.targetGUID] and cells[action.targetGUID][action.category]
+  if not cell or cell.providerGUID ~= playerGUID or cell.delivery == "greater" then
+    BlockSecureClick(button, "Assignment changed before the buff could be cast.")
+    return
+  end
+
+  local provider = CBC.providers and CBC.providers[playerGUID]
+  local capability = provider and provider.categories and provider.categories[action.category]
+  local expectedID, expectedName
+  if capability then expectedID, expectedName = CBC:GetCastSpell(capability, false) end
+  if not expectedName
+    or expectedName ~= action.spellName
+    or (expectedID and action.spellID and expectedID ~= action.spellID)
+  then
+    BlockSecureClick(button, "Available buff changed before the cast.")
+    return
+  end
+
+  if IsSpellInRange and IsSpellInRange(action.spellName, action.unit) == 0 then
+    BlockSecureClick(button, "Target is out of range.")
   end
 end
 
 local function SecurePostClick(button)
   if InCombatLockdown and InCombatLockdown() then return end
-  if not button._cbcRangeBlocked then return end
-  button._cbcRangeBlocked = nil
+  local reason = button._cbcBlockedReason
+  if not reason then return end
+  button._cbcBlockedReason = nil
   button._cbcActionSignature = nil
   ConfigureSecureAction(button, button._cbcAction)
-  CBC:Print("Target is out of range.")
+  CBC:Debug("Blocked secure buff click: "..reason)
+  CBC:Print(reason)
+  CBC:ScheduleRebuild("blocked secure click", 0)
 end
 
 function CBC:SyncSmartOverlay(action)
@@ -237,7 +275,7 @@ function CBC:CreateCompact()
   frame.smart = smart
 
   local overlay = CreateFrame("Button", "BestowSmartSecure", UIParent, "SecureActionButtonTemplate")
-  overlay:RegisterForClicks("AnyUp")
+  overlay:RegisterForClicks("LeftButtonUp")
   overlay:SetFrameStrata("DIALOG")
   overlay:SetScript("PreClick", SecurePreClick)
   overlay:SetScript("PostClick", SecurePostClick)
@@ -252,7 +290,7 @@ function CBC:CreateCompact()
   self.smartSecureOverlay = overlay
 
   local combatGreater = CreateFrame("Button", "BestowCombatGreaterSecure", UIParent, "SecureActionButtonTemplate")
-  combatGreater:RegisterForClicks("AnyUp")
+  combatGreater:RegisterForClicks("LeftButtonUp")
   combatGreater:SetFrameStrata("DIALOG")
   combatGreater:SetScript("OnEnter", function(self)
     local action = self._cbcAction
@@ -300,7 +338,7 @@ function CBC:CreateCompact()
     row:SetScript("OnLeave", function() GameTooltip:Hide(); CBC.compactHover=false; CBC:ScheduleRebuild("hover leave",0.25) end)
 
     local overlay = CreateFrame("Button", "BestowRowSecure" .. i, UIParent, "SecureActionButtonTemplate")
-    overlay:RegisterForClicks("AnyUp")
+    overlay:RegisterForClicks("LeftButtonUp")
     overlay:EnableMouseWheel(true)
     overlay:SetFrameStrata("DIALOG")
     overlay:SetScript("PreClick", SecurePreClick)
@@ -325,7 +363,7 @@ function CBC:CreateCompact()
     row.secureOverlay = overlay
 
     local combatOverlay = CreateFrame("Button", "BestowRowCombatSecure" .. i, UIParent, "SecureActionButtonTemplate")
-    combatOverlay:RegisterForClicks("AnyUp")
+    combatOverlay:RegisterForClicks("LeftButtonUp")
     combatOverlay:SetFrameStrata("DIALOG")
     combatOverlay:SetScript("OnEnter", function(self)
       CBC.compactHover = true
