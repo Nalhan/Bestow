@@ -27,5 +27,6 @@ UI\Options.lua
 UI\Compact.lua
 UI\Assignments.lua
 UI\Diagnostics.lua
+OverwriteTesting.lua
 Performance.lua
 Profiling.lua
