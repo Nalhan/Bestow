@@ -19,7 +19,6 @@ Data\Scoring.lua
 Data\Preferences.lua
 Spellbook.lua
 Roster.lua
-Distance.lua
 Auras.lua
 Assignments.lua
 Comms.lua
