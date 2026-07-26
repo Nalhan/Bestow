@@ -345,8 +345,11 @@ function CBC:CreateCompact()
     blocker:EnableMouse(true)
     blocker:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-      GameTooltip:SetText("Combat target changed")
-      GameTooltip:AddLine("This protected row is disabled until combat ends so it cannot cast on the wrong unit.", 1, 0.35, 0.3, true)
+      GameTooltip:SetText(self._cbcTitle or "Individual buff unavailable")
+      GameTooltip:AddLine(
+        self._cbcDetail or "This protected row is temporarily disabled.",
+        1, 0.35, 0.3, true
+      )
       GameTooltip:Show()
     end)
     blocker:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -545,7 +548,10 @@ function CBC:UpdateCompact()
     if visible then
       shown = shown + 1
       local row = frame.rows[shown]
-      local rowAction = not inCombat and not view.member.dead and view.member.online ~= false and view.action or nil
+      local _, spellName = self:GetCastSpell(view.cap, false)
+      local distanceState, distanceDetail = self:GetIndividualDistanceState(view.member, spellName)
+      local rowAction = not inCombat and distanceState == "in-range"
+        and not view.member.dead and view.member.online ~= false and view.action or nil
       row.recipientGUID, row.category, row.action = view.member.guid, view.category, rowAction
       if inCombat then
         if row.secureOverlay then row.secureOverlay._cbcHasAction = false end
@@ -558,10 +564,42 @@ function CBC:UpdateCompact()
         if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
         row.status:SetText("STALE TARGET  " .. self.Categories[view.category].short)
         row.status:SetTextColor(1,0.15,0.15)
-        if row.combatBlocker then row.combatBlocker:Show() end
+        if row.combatBlocker then
+          row.combatBlocker._cbcTitle = "Combat target changed"
+          row.combatBlocker._cbcDetail = "This protected row is disabled until combat ends so it cannot cast on the wrong unit."
+          row.combatBlocker:Show()
+        end
       elseif view.member.dead then
         if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
         row.status:SetText("DEAD  "..self.Categories[view.category].short); row.status:SetTextColor(1,0.15,0.15)
+      elseif distanceState == "offline" then
+        if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
+        row.status:SetText("OFFLINE  "..self.Categories[view.category].short)
+        row.status:SetTextColor(0.55,0.55,0.55)
+        if inCombat and row.combatBlocker then
+          row.combatBlocker._cbcTitle = "Player offline"
+          row.combatBlocker._cbcDetail = "This individual buff cannot be cast while the player is offline."
+          row.combatBlocker:Show()
+        end
+      elseif distanceState == "remote" then
+        if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
+        local remoteLabel = distanceDetail and distanceDetail ~= "" and distanceDetail or "VERY FAR"
+        row.status:SetText("REMOTE  "..remoteLabel)
+        row.status:SetTextColor(0.55,0.62,0.72)
+        if inCombat and row.combatBlocker then
+          row.combatBlocker._cbcTitle = "Player is very far away"
+          row.combatBlocker._cbcDetail = distanceDetail or "The player may be in another zone."
+          row.combatBlocker:Show()
+        end
+      elseif distanceState == "out-of-range" then
+        if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
+        row.status:SetText("OUT OF RANGE  "..self.Categories[view.category].short)
+        row.status:SetTextColor(1,0.55,0.18)
+        if inCombat and row.combatBlocker then
+          row.combatBlocker._cbcTitle = "Player is out of range"
+          row.combatBlocker._cbcDetail = "Move into buff range to enable this protected button."
+          row.combatBlocker:Show()
+        end
       else
         if row.icon.SetDesaturated then row.icon:SetDesaturated(false) end
         local duration = view.aura and self:FormatDuration(view.aura.expires) or ""
