@@ -40,59 +40,6 @@ local function ConfigureSecureAction(button, action)
   button:SetAttribute("unit", action.mass and "player" or (action.unit or "player"))
 end
 
-local function BlockSecureClick(button, reason)
-  button._cbcBlockedReason = reason
-  button:SetAttribute("type", nil)
-end
-
-local function SecurePreClick(button)
-  if InCombatLockdown and InCombatLockdown() then return end
-  button._cbcBlockedReason = nil
-  local action = button._cbcAction
-  if not action or action.mass then return end
-
-  if not action.targetGUID or not action.unit or UnitGUID(action.unit) ~= action.targetGUID then
-    BlockSecureClick(button, "Target changed before the buff could be cast.")
-    return
-  end
-
-  local playerGUID = UnitGUID("player")
-  local cells = CBC.assignment and CBC.assignment.cells
-  local cell = cells and cells[action.targetGUID] and cells[action.targetGUID][action.category]
-  if not cell or cell.providerGUID ~= playerGUID or cell.delivery == "greater" then
-    BlockSecureClick(button, "Assignment changed before the buff could be cast.")
-    return
-  end
-
-  local provider = CBC.providers and CBC.providers[playerGUID]
-  local capability = provider and provider.categories and provider.categories[action.category]
-  local expectedID, expectedName
-  if capability then expectedID, expectedName = CBC:GetCastSpell(capability, false) end
-  if not expectedName
-    or expectedName ~= action.spellName
-    or (expectedID and action.spellID and expectedID ~= action.spellID)
-  then
-    BlockSecureClick(button, "Available buff changed before the cast.")
-    return
-  end
-
-  if IsSpellInRange and IsSpellInRange(action.spellName, action.unit) == 0 then
-    BlockSecureClick(button, "Target is out of range.")
-  end
-end
-
-local function SecurePostClick(button)
-  if InCombatLockdown and InCombatLockdown() then return end
-  local reason = button._cbcBlockedReason
-  if not reason then return end
-  button._cbcBlockedReason = nil
-  button._cbcActionSignature = nil
-  ConfigureSecureAction(button, button._cbcAction)
-  CBC:Debug("Blocked secure buff click: "..reason)
-  CBC:Print(reason)
-  CBC:ScheduleRebuild("blocked secure click", 0)
-end
-
 function CBC:SyncSmartOverlay(action)
   local overlay, smart = self.smartSecureOverlay, self.compactFrame and self.compactFrame.smart
   if not overlay or not smart or (InCombatLockdown and InCombatLockdown()) then return end
@@ -166,6 +113,11 @@ function CBC:GetNextAction()
   local deferred
   for _, action in ipairs(self.actions) do
     local usable = not action.dead and action.online ~= false
+    if usable and not action.mass and (
+      not action.targetGUID or not action.unit or UnitGUID(action.unit) ~= action.targetGUID
+    ) then
+      usable = false
+    end
     if usable and not action.mass and IsSpellInRange then
       local range = IsSpellInRange(action.spellName, action.unit)
       if range == 0 then usable = false end
@@ -277,8 +229,6 @@ function CBC:CreateCompact()
   local overlay = CreateFrame("Button", "BestowSmartSecure", UIParent, "SecureActionButtonTemplate")
   overlay:RegisterForClicks("LeftButtonUp")
   overlay:SetFrameStrata("DIALOG")
-  overlay:SetScript("PreClick", SecurePreClick)
-  overlay:SetScript("PostClick", SecurePostClick)
   overlay:SetScript("OnEnter", SmartEnter)
   overlay:SetScript("OnLeave", SmartLeave)
   overlay:SetScript("OnShow", function(self)
@@ -341,8 +291,6 @@ function CBC:CreateCompact()
     overlay:RegisterForClicks("LeftButtonUp")
     overlay:EnableMouseWheel(true)
     overlay:SetFrameStrata("DIALOG")
-    overlay:SetScript("PreClick", SecurePreClick)
-    overlay:SetScript("PostClick", SecurePostClick)
     overlay:SetScript("OnMouseWheel", function(_, delta)
       CycleRowOverride(row, delta)
     end)
@@ -588,8 +536,13 @@ function CBC:UpdateCompact()
       local row = frame.rows[shown]
       local _, spellName = self:GetCastSpell(view.cap, false)
       local distanceState, distanceDetail = self:GetIndividualDistanceState(view.member, spellName)
+      local actionMatchesTarget = view.action
+        and view.action.targetGUID == view.member.guid
+        and view.action.unit
+        and UnitGUID(view.action.unit) == view.member.guid
       local rowAction = not inCombat and distanceState == "in-range"
-        and not view.member.dead and view.member.online ~= false and view.action or nil
+        and not view.member.dead and view.member.online ~= false
+        and actionMatchesTarget and view.action or nil
       row.recipientGUID, row.category, row.action = view.member.guid, view.category, rowAction
       if inCombat then
         if row.secureOverlay then row.secureOverlay._cbcHasAction = false end
