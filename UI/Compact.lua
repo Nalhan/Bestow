@@ -44,16 +44,21 @@ end
 local function TraceSecureClick(button)
   local action = button._cbcAction
   if not action then return end
+  local visualRow = button._cbcVisualRow
+  local visualGUID = visualRow and visualRow.recipientGUID
+  local visualMember = visualGUID and CBC.rosterByGUID and CBC.rosterByGUID[visualGUID]
   local currentGUID = not action.mass and action.unit and UnitGUID(action.unit)
   CBC.lastSecureClick = {
     time=GetTime(),spellID=action.spellID,spellName=action.spellName,
     unit=action.unit,targetGUID=action.targetGUID,currentGUID=currentGUID,
+    visualGUID=visualGUID,visualCategory=visualRow and visualRow.category,
   }
   CBC:Debug(string.format(
-    "Secure click: spell=%s/%s category=%s unit=%s expectedGUID=%s currentGUID=%s target=%s mass=%s",
+    "Secure click: spell=%s/%s category=%s unit=%s expectedGUID=%s currentGUID=%s target=%s mass=%s visualGUID=%s visualTarget=%s visualCategory=%s",
     tostring(action.spellID), tostring(action.spellName), tostring(action.category),
     tostring(action.unit), tostring(action.targetGUID), tostring(currentGUID),
-    tostring(action.targetName), tostring(action.mass)
+    tostring(action.targetName), tostring(action.mass), tostring(visualGUID),
+    tostring(visualMember and visualMember.name), tostring(visualRow and visualRow.category)
   ))
 end
 
@@ -345,7 +350,16 @@ function CBC:CreateCompact()
     overlay:RegisterForClicks("LeftButtonUp")
     overlay:EnableMouseWheel(true)
     overlay:SetFrameStrata("DIALOG")
+    overlay._cbcVisualRow = row
     overlay:SetScript("PreClick", TraceSecureClick)
+    overlay:SetScript("PostClick", function(self)
+      -- Aura observation must be allowed to refresh or remove this recipient
+      -- row after a click even if the pointer never leaves the overlay.
+      if not (InCombatLockdown and InCombatLockdown()) then
+        UnlockSecureHover(self)
+        CBC:ScheduleRebuild("row secure click", 0.05)
+      end
+    end)
     overlay:SetScript("OnMouseWheel", function(_, delta)
       UnlockSecureHover(overlay)
       CycleRowOverride(row, delta)
