@@ -272,6 +272,16 @@ function CBC:CreateCompact()
   overlay:RegisterForClicks("LeftButtonUp")
   overlay:SetFrameStrata("DIALOG")
   overlay:SetScript("PreClick", TraceSecureClick)
+  overlay:SetScript("PostClick", function(self)
+    -- The smart button is expected to advance in place after each successful
+    -- buff. Keeping its hover lock until OnLeave prevents aura-driven compact
+    -- updates while the cursor remains stationary, leaving the completed
+    -- action bound to the button and repeatedly casting on the old target.
+    if not (InCombatLockdown and InCombatLockdown()) then
+      UnlockSecureHover(self)
+      CBC:ScheduleRebuild("smart secure click", 0.05)
+    end
+  end)
   overlay:SetScript("OnEnter", SmartEnter)
   overlay:SetScript("OnLeave", SmartLeave)
   overlay:SetScript("OnShow", function(self)
