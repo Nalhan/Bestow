@@ -34,10 +34,51 @@ local function ConfigureSecureAction(button, action)
   button:SetAttribute("macrotext", nil)
   button:SetAttribute("spell", nil)
   button:SetAttribute("unit", nil)
-  if not action or not action.spellName then return end
+  local secureSpell = action and (action.spellID or action.spellName)
+  if not secureSpell then return end
   button:SetAttribute("type", "spell")
-  button:SetAttribute("spell", action.spellName)
+  button:SetAttribute("spell", secureSpell)
   button:SetAttribute("unit", action.mass and "player" or (action.unit or "player"))
+end
+
+local function TraceSecureClick(button)
+  local action = button._cbcAction
+  if not action then return end
+  local currentGUID = not action.mass and action.unit and UnitGUID(action.unit)
+  CBC.lastSecureClick = {
+    time=GetTime(),spellID=action.spellID,spellName=action.spellName,
+    unit=action.unit,targetGUID=action.targetGUID,currentGUID=currentGUID,
+  }
+  CBC:Debug(string.format(
+    "Secure click: spell=%s/%s category=%s unit=%s expectedGUID=%s currentGUID=%s target=%s mass=%s",
+    tostring(action.spellID), tostring(action.spellName), tostring(action.category),
+    tostring(action.unit), tostring(action.targetGUID), tostring(currentGUID),
+    tostring(action.targetName), tostring(action.mass)
+  ))
+end
+
+local secureTraceFrame = CreateFrame("Frame")
+secureTraceFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
+secureTraceFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+secureTraceFrame:SetScript("OnEvent", function(_, event, ...)
+  local trace = CBC.lastSecureClick
+  if not trace or GetTime()-trace.time > 2 then return end
+  local values = {}
+  for index=1,select("#", ...) do values[index] = tostring(select(index, ...)) end
+  if values[1] ~= "player" then return end
+  CBC:Debug(string.format(
+    "%s after secure click spell=%s/%s unit=%s expectedGUID=%s clickGUID=%s args=[%s]",
+    event, tostring(trace.spellID), tostring(trace.spellName), tostring(trace.unit),
+    tostring(trace.targetGUID), tostring(trace.currentGUID), table.concat(values, ", ")
+  ))
+end)
+
+local function LockSecureHover(owner)
+  CBC.compactSecureHover = owner
+end
+
+local function UnlockSecureHover(owner)
+  if CBC.compactSecureHover == owner then CBC.compactSecureHover = nil end
 end
 
 function CBC:SyncSmartOverlay(action)
@@ -211,7 +252,7 @@ function CBC:CreateCompact()
   smart.text = smart:CreateFontString(nil,"OVERLAY"); smart.text:SetPoint("LEFT",smart.icon,"RIGHT",6,0); smart.text:SetPoint("RIGHT",-5,0); smart.text:SetJustifyH("LEFT")
   self:ApplyFont(smart.text,11,"")
   local function SmartEnter(owner)
-    CBC.compactHover=true; CBC:UpdateCompact()
+    CBC.compactHover=true; CBC:UpdateCompact(); LockSecureHover(owner)
     if smart.action then
       GameTooltip:SetOwner(owner,"ANCHOR_RIGHT")
       GameTooltip:SetText(smart.action.spellName)
@@ -219,7 +260,8 @@ function CBC:CreateCompact()
       GameTooltip:Show()
     end
   end
-  local function SmartLeave()
+  local function SmartLeave(owner)
+    UnlockSecureHover(owner)
     GameTooltip:Hide(); CBC.compactHover=false; CBC:ScheduleRebuild("hover leave",0.25)
   end
   smart:SetScript("OnEnter", SmartEnter)
@@ -229,6 +271,7 @@ function CBC:CreateCompact()
   local overlay = CreateFrame("Button", "BestowSmartSecure", UIParent, "SecureActionButtonTemplate")
   overlay:RegisterForClicks("LeftButtonUp")
   overlay:SetFrameStrata("DIALOG")
+  overlay:SetScript("PreClick", TraceSecureClick)
   overlay:SetScript("OnEnter", SmartEnter)
   overlay:SetScript("OnLeave", SmartLeave)
   overlay:SetScript("OnShow", function(self)
@@ -242,6 +285,7 @@ function CBC:CreateCompact()
   local combatGreater = CreateFrame("Button", "BestowCombatGreaterSecure", UIParent, "SecureActionButtonTemplate")
   combatGreater:RegisterForClicks("LeftButtonUp")
   combatGreater:SetFrameStrata("DIALOG")
+  combatGreater:SetScript("PreClick", TraceSecureClick)
   combatGreater:SetScript("OnEnter", function(self)
     local action = self._cbcAction
     if action then
@@ -291,15 +335,20 @@ function CBC:CreateCompact()
     overlay:RegisterForClicks("LeftButtonUp")
     overlay:EnableMouseWheel(true)
     overlay:SetFrameStrata("DIALOG")
+    overlay:SetScript("PreClick", TraceSecureClick)
     overlay:SetScript("OnMouseWheel", function(_, delta)
+      UnlockSecureHover(overlay)
       CycleRowOverride(row, delta)
+      CBC:UpdateCompact()
+      LockSecureHover(overlay)
     end)
     overlay:SetScript("OnEnter", function(self)
       CBC.compactHover = true
-      CBC:UpdateCompact()
+      LockSecureHover(self)
       if row.recipientGUID then CBC:ShowProviderTooltip(self, row.recipientGUID, row.category) end
     end)
     overlay:SetScript("OnLeave", function()
+      UnlockSecureHover(overlay)
       GameTooltip:Hide(); CBC.compactHover=false; CBC:ScheduleRebuild("hover leave",0.25)
     end)
     overlay:SetScript("OnShow", function(self)
@@ -313,6 +362,7 @@ function CBC:CreateCompact()
     local combatOverlay = CreateFrame("Button", "BestowRowCombatSecure" .. i, UIParent, "SecureActionButtonTemplate")
     combatOverlay:RegisterForClicks("LeftButtonUp")
     combatOverlay:SetFrameStrata("DIALOG")
+    combatOverlay:SetScript("PreClick", TraceSecureClick)
     combatOverlay:SetScript("OnEnter", function(self)
       CBC.compactHover = true
       if row.recipientGUID then CBC:ShowProviderTooltip(self, row.recipientGUID, row.category) end
@@ -439,6 +489,7 @@ end
 function CBC:UpdateCompact()
   local frame = self.compactFrame
   if not frame or not self.db.enabled then
+    self.compactSecureHover = nil
     if frame then frame:Hide() end
     if not (InCombatLockdown and InCombatLockdown()) then
       self:SyncSmartOverlay(nil)
@@ -454,6 +505,11 @@ function CBC:UpdateCompact()
     return
   end
   local inCombat = InCombatLockdown and InCombatLockdown()
+  if inCombat then
+    self.compactSecureHover = nil
+  elseif self.compactSecureHover then
+    return
+  end
   local nextAction, deferred = self:GetNextAction()
   frame.smart.action = inCombat and nil or nextAction
   if inCombat then
