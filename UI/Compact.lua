@@ -71,6 +71,7 @@ secureTraceFrame:SetScript("OnEvent", function(_, event, ...)
   local values = {}
   for index=1,select("#", ...) do values[index] = tostring(select(index, ...)) end
   if values[1] ~= "player" then return end
+  if values[2] ~= tostring(trace.spellName) then return end
   CBC:Debug(string.format(
     "%s after secure click spell=%s/%s unit=%s expectedGUID=%s clickGUID=%s args=[%s]",
     event, tostring(trace.spellID), tostring(trace.spellName), tostring(trace.unit),
@@ -461,21 +462,6 @@ function CBC:BuildCompactRows()
     if member and cap then
       local state, aura = self:CoverageState(recipientGUID,category,cap,false)
       local action = actionByTargetCategory[recipientGUID..":"..category]
-      -- Greater coverage is represented by the shared header action. Keep
-      -- compact recipient rows exclusive to individual assignments.
-      if not action and cap.single then
-        local id, name, rank, icon = self:GetCastSpell(cap, false)
-        local cell = self.assignment.cells[recipientGUID] and self.assignment.cells[recipientGUID][category]
-        if id and name then
-          action = {
-            priority=3,mass=false,category=category,cap=cap,
-            spellID=id,spellName=name,rank=rank,icon=icon,
-            unit=member.unit,targetGUID=recipientGUID,targetName=member.name,
-            state=state,dead=member.dead,online=member.online,
-            source=cell and cell.source,aura=aura,
-          }
-        end
-      end
       rows[#rows+1] = {
         member=member,category=category,cap=cap,state=state,aura=aura,
         action=action,delivery="individual",
