@@ -15,6 +15,13 @@ local function SortedKeys(source)
   return keys
 end
 
+local function AppendTail(lines, values, maximum)
+  local first = math.max(1, #(values or {}) - maximum + 1)
+  for index=first,#(values or {}) do
+    lines[#lines+1]="  "..values[index]
+  end
+end
+
 local function FormatNumber(value)
   if value == nil then return "nil" end
   if type(value) ~= "number" then return tostring(value) end
@@ -182,9 +189,9 @@ function CBC:BuildDiagnosticText()
     local guid=self.session.header and self.session.header[category]
     local provider=guid and self.providers[guid]
     lines[#lines+1]=string.format(
-      "  header %s=%s revision=%s writer=%s",
+      "  header %s=%s r%s by %s",
       category,provider and provider.name or guid or "AUTO",
-      tostring(version.revision),tostring(version.writer)
+      tostring(version.revision),self:ProviderName(version.writer)
     )
   end
   for _,recipientGUID in ipairs(SortedKeys(self.session and self.session.cellVersions or {})) do
@@ -194,10 +201,10 @@ function CBC:BuildDiagnosticText()
       local guid=self.session.cells[recipientGUID] and self.session.cells[recipientGUID][category]
       local provider=guid and self.providers[guid]
       lines[#lines+1]=string.format(
-        "  cell %s/%s=%s revision=%s writer=%s",
+        "  cell %s/%s=%s r%s by %s",
         recipient and recipient.shortName or recipientGUID,category,
         provider and provider.name or guid or "AUTO",
-        tostring(version.revision),tostring(version.writer)
+        tostring(version.revision),self:ProviderName(version.writer)
       )
     end
   end
@@ -210,8 +217,11 @@ function CBC:BuildDiagnosticText()
   lines[#lines+1]="Catalog issues:"
   for _,issue in ipairs(self.catalogIssues or {}) do lines[#lines+1]="  "..issue end
   lines[#lines+1]=""
-  lines[#lines+1]="Recent log:"
-  for _,entry in ipairs(self.diagnostics or {}) do lines[#lines+1]="  "..entry end
+  lines[#lines+1]="Assignment update chain (latest 60):"
+  AppendTail(lines,self.assignmentDiagnostics,60)
+  lines[#lines+1]=""
+  lines[#lines+1]="System log (latest 40):"
+  AppendTail(lines,self.diagnostics,40)
   return table.concat(lines,"\n")
 end
 

@@ -10,6 +10,7 @@ CBC.prefix = "BESTOW1"
 CBC.modules = {}
 CBC.events = {}
 CBC.diagnostics = {}
+CBC.assignmentDiagnostics = {}
 CBC.providers = {}
 CBC.roster = {}
 CBC.rosterByGUID = {}
@@ -62,6 +63,14 @@ end
 function CBC:Debug(message)
   self.diagnostics[#self.diagnostics + 1] = date("%H:%M:%S") .. " " .. tostring(message)
   if #self.diagnostics > 200 then table.remove(self.diagnostics, 1) end
+end
+
+function CBC:DebugAssignment(stage, message)
+  local entries = self.assignmentDiagnostics
+  entries[#entries + 1] = string.format(
+    "%s %-8s %s", date("%H:%M:%S"), "[" .. tostring(stage) .. "]", tostring(message)
+  )
+  if #entries > 120 then table.remove(entries, 1) end
 end
 
 function CBC:Normalize(value)

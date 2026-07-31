@@ -23,6 +23,14 @@ local function MarkProviderUsed(usedProviders, providerGUID, cap)
   end
 end
 
+local function ProviderEffectsCanCoexist(first, second)
+  if not first or not second then return false end
+  if first.independent or second.independent then return true end
+  return first.sharedCastKey
+    and second.sharedCastKey
+    and first.sharedCastKey == second.sharedCastKey
+end
+
 local function AddSharedCastCells(self, cells, providerGUID, cap, source, occupiedCategories)
   if not cap or not cap.sharedCastKey then return end
   local provider = self.providers[providerGUID]
@@ -211,7 +219,27 @@ function CBC:ApplyOverrides(cellsByRecipient)
   for recipientGUID, categories in pairs(self.session.cells or {}) do
     local cells = cellsByRecipient[recipientGUID]
     if cells then
+      local entries = {}
       for category, providerGUID in pairs(categories) do
+        local version = self.session.cellVersions
+          and self.session.cellVersions[recipientGUID]
+          and self.session.cellVersions[recipientGUID][category]
+        entries[#entries+1] = {
+          category=category,
+          providerGUID=providerGUID,
+          revision=tonumber(version and version.revision) or 0,
+          writer=version and version.writer or "",
+          order=self.Categories[category] and self.Categories[category].order or 999,
+        }
+      end
+      table.sort(entries, function(a,b)
+        if a.revision ~= b.revision then return a.revision < b.revision end
+        if a.writer ~= b.writer then return a.writer < b.writer end
+        if a.order ~= b.order then return a.order < b.order end
+        return a.category < b.category
+      end)
+      for _, entry in ipairs(entries) do
+        local category, providerGUID = entry.category, entry.providerGUID
         local provider = self.providers[providerGUID]
         local cap = provider and provider.categories and provider.categories[category]
         if cap and cap.single then
@@ -346,6 +374,7 @@ function CBC:BuildAssignments()
     providerCategoriesByTarget=providerCategoriesByTarget,
     baseline=baseline,independentBaseline=independentBaseline,
   }
+  self:AuditAssignmentUpdates()
 end
 
 local function ActionSort(a,b)
@@ -383,6 +412,113 @@ function CBC:IsNewerMatrixVersion(current, revision, writerGUID)
   local currentRevision = tonumber(current.revision) or 0
   if revision ~= currentRevision then return revision > currentRevision end
   return writerGUID > (current.writer or "")
+end
+
+function CBC:ProviderName(guid)
+  local provider = guid and self.providers[guid]
+  return provider and self:ShortName(provider.name) or tostring(guid or "AUTO")
+end
+
+function CBC:QueueAssignmentAudit(entry)
+  self.pendingAssignmentAudits = self.pendingAssignmentAudits or {}
+  self.pendingAssignmentAudits[#self.pendingAssignmentAudits+1] = entry
+end
+
+function CBC:AuditAssignmentUpdates()
+  local pending = self.pendingAssignmentAudits
+  if not pending or #pending == 0 then return end
+  for _, entry in ipairs(pending) do
+    local stored, resolved, delivery, source
+    if entry.kind == "cell" then
+      stored = self.session.cells[entry.recipientGUID]
+        and self.session.cells[entry.recipientGUID][entry.category]
+      local cell = self.assignment.cells[entry.recipientGUID]
+        and self.assignment.cells[entry.recipientGUID][entry.category]
+      resolved = cell and cell.providerGUID
+      delivery = cell and cell.delivery
+      source = cell and cell.source
+    else
+      stored = self.session.header[entry.category]
+      resolved = self.assignment.greaterByCategory[entry.category]
+      delivery = "greater"
+      source = "header"
+    end
+    self:DebugAssignment("RESOLVE", string.format(
+      "tx=%s %s %s/%s requested=%s stored=%s resolved=%s delivery=%s source=%s",
+      entry.tx, entry.kind, tostring(entry.recipientName or "GROUP"), entry.category,
+      self:ProviderName(entry.providerGUID), self:ProviderName(stored),
+      self:ProviderName(resolved), tostring(delivery), tostring(source)
+    ))
+  end
+  wipe(pending)
+end
+
+function CBC:ClearConflictingCellOverrides(
+  recipientGUID, category, providerGUID, revision, writerGUID, broadcast
+)
+  local categories = self.session.cells[recipientGUID]
+  local provider = self.providers[providerGUID]
+  local selectedCap = provider and provider.categories and provider.categories[category]
+  local conflicts = {}
+  for otherCategory, otherProviderGUID in pairs(categories or {}) do
+    if otherCategory ~= category and otherProviderGUID == providerGUID then
+      local otherCap = provider.categories and provider.categories[otherCategory]
+      if not ProviderEffectsCanCoexist(selectedCap, otherCap) then
+        conflicts[#conflicts+1] = otherCategory
+      end
+    end
+  end
+  table.sort(conflicts)
+  for _, otherCategory in ipairs(conflicts) do
+    local current = self.session.cellVersions
+      and self.session.cellVersions[recipientGUID]
+      and self.session.cellVersions[recipientGUID][otherCategory]
+    if self:IsNewerMatrixVersion(current, revision, writerGUID) then
+      categories[otherCategory] = nil
+      self:SetCellVersion(recipientGUID, otherCategory, revision, writerGUID)
+      if broadcast and self.SendCell then
+        self:SendCell(recipientGUID, otherCategory, nil, revision, writerGUID)
+      end
+      self:DebugAssignment("CONFLICT", string.format(
+        "tx=%s:%s cleared cell %s/%s because provider=%s moved to %s",
+        tostring(writerGUID), tostring(revision), tostring(recipientGUID),
+        otherCategory, self:ProviderName(providerGUID), category
+      ))
+    end
+  end
+end
+
+function CBC:ClearConflictingHeaderAssignments(
+  category, providerGUID, revision, writerGUID, broadcast
+)
+  local provider = self.providers[providerGUID]
+  local selectedCap = provider and provider.categories and provider.categories[category]
+  local conflicts = {}
+  for otherCategory, otherProviderGUID in pairs(self.session.header or {}) do
+    if otherCategory ~= category and otherProviderGUID == providerGUID then
+      local otherCap = provider.categories and provider.categories[otherCategory]
+      if not ProviderEffectsCanCoexist(selectedCap, otherCap) then
+        conflicts[#conflicts+1] = otherCategory
+      end
+    end
+  end
+  table.sort(conflicts)
+  for _, otherCategory in ipairs(conflicts) do
+    local current = self.session.headerVersions
+      and self.session.headerVersions[otherCategory]
+    if self:IsNewerMatrixVersion(current, revision, writerGUID) then
+      self.session.header[otherCategory] = nil
+      self:SetHeaderVersion(otherCategory, revision, writerGUID)
+      if broadcast and self.SendHeader then
+        self:SendHeader(otherCategory, nil, revision, writerGUID)
+      end
+      self:DebugAssignment("CONFLICT", string.format(
+        "tx=%s:%s cleared header %s because provider=%s moved to %s",
+        tostring(writerGUID), tostring(revision), otherCategory,
+        self:ProviderName(providerGUID), category
+      ))
+    end
+  end
 end
 
 function CBC:BuildActions(coverageReady)
@@ -481,24 +617,49 @@ function CBC:SetProviderOverride(providerGUID, recipientGUID, category)
 end
 
 function CBC:SetCellOverride(recipientGUID, category, providerGUID)
-  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
-  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return false end
+  if InCombatLockdown and InCombatLockdown() then
+    self:DebugAssignment("REJECT", "cell change blocked by combat")
+    self:Print("Assignments are locked in combat.")
+    return false
+  end
+  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then
+    self:DebugAssignment("REJECT", "cell change blocked by matrix permissions")
+    self:Print("You cannot edit the shared matrix.")
+    return false
+  end
   local provider = self.providers[providerGUID]
   local cap = provider and provider.categories and provider.categories[category]
   if not self.rosterByGUID[recipientGUID] or not cap or not cap.single then
+    self:DebugAssignment("REJECT", string.format(
+      "cell %s/%s provider=%s is not currently capable",
+      self:ProviderName(recipientGUID), tostring(category), self:ProviderName(providerGUID)
+    ))
     self:Print("That provider cannot supply this individual buff.")
     return false
   end
-  self.session.cells[recipientGUID] = self.session.cells[recipientGUID] or {}
-  self.session.cells[recipientGUID][category] = providerGUID
   local revision = self:NextMatrixRevision()
   local writerGUID = UnitGUID("player")
-  self:SetCellVersion(recipientGUID, category, revision, writerGUID)
-  if self.SendCell then self:SendCell(recipientGUID, category, providerGUID, revision, writerGUID) end
-  self:Debug(string.format(
-    "Matrix cell local r%d writer=%s recipient=%s category=%s provider=%s",
-    revision, tostring(writerGUID), tostring(recipientGUID), tostring(category), tostring(providerGUID)
+  local tx = tostring(writerGUID) .. ":" .. revision
+  self.session.cells[recipientGUID] = self.session.cells[recipientGUID] or {}
+  self:DebugAssignment("REQUEST", string.format(
+    "tx=%s cell %s/%s -> %s", tx, self:ProviderName(recipientGUID),
+    category, self:ProviderName(providerGUID)
   ))
+  self:ClearConflictingCellOverrides(
+    recipientGUID, category, providerGUID, revision, writerGUID, true
+  )
+  self.session.cells[recipientGUID][category] = providerGUID
+  self:SetCellVersion(recipientGUID, category, revision, writerGUID)
+  self:DebugAssignment("STORE", string.format(
+    "tx=%s cell %s/%s=%s r%d", tx, self:ProviderName(recipientGUID),
+    category, self:ProviderName(providerGUID), revision
+  ))
+  if self.SendCell then self:SendCell(recipientGUID, category, providerGUID, revision, writerGUID) end
+  self:QueueAssignmentAudit({
+    tx=tx,kind="cell",revision=revision,writer=writerGUID,
+    recipientGUID=recipientGUID,recipientName=self:ProviderName(recipientGUID),
+    category=category,providerGUID=providerGUID,origin="local",
+  })
   self:Rebuild("cell override")
   local recipient = self.rosterByGUID[recipientGUID]
   self:Print(self:ShortName(provider.name) .. " assigned " .. self.Categories[category].label .. " to " .. recipient.shortName .. ".")
@@ -506,42 +667,85 @@ function CBC:SetCellOverride(recipientGUID, category, providerGUID)
 end
 
 function CBC:ResetCellOverride(recipientGUID, category)
-  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
-  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return false end
+  if InCombatLockdown and InCombatLockdown() then
+    self:DebugAssignment("REJECT", "cell reset blocked by combat")
+    self:Print("Assignments are locked in combat.")
+    return false
+  end
+  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then
+    self:DebugAssignment("REJECT", "cell reset blocked by matrix permissions")
+    self:Print("You cannot edit the shared matrix.")
+    return false
+  end
   if self.session.cells[recipientGUID] then self.session.cells[recipientGUID][category] = nil end
   local revision = self:NextMatrixRevision()
   local writerGUID = UnitGUID("player")
-  self:SetCellVersion(recipientGUID, category, revision, writerGUID)
-  if self.SendCell then self:SendCell(recipientGUID, category, nil, revision, writerGUID) end
-  self:Debug(string.format(
-    "Matrix cell reset r%d writer=%s recipient=%s category=%s",
-    revision, tostring(writerGUID), tostring(recipientGUID), tostring(category)
+  local tx = tostring(writerGUID) .. ":" .. revision
+  self:DebugAssignment("REQUEST", string.format(
+    "tx=%s reset cell %s/%s to AUTO",
+    tx, self:ProviderName(recipientGUID), category
   ))
+  self:SetCellVersion(recipientGUID, category, revision, writerGUID)
+  self:DebugAssignment("STORE", string.format(
+    "tx=%s cell %s/%s=AUTO r%d", tx,
+    self:ProviderName(recipientGUID), category, revision
+  ))
+  if self.SendCell then self:SendCell(recipientGUID, category, nil, revision, writerGUID) end
+  self:QueueAssignmentAudit({
+    tx=tx,kind="cell",revision=revision,writer=writerGUID,
+    recipientGUID=recipientGUID,recipientName=self:ProviderName(recipientGUID),
+    category=category,providerGUID=nil,origin="local",
+  })
   self:Rebuild("cell reset")
   self:Print(self.Categories[category].label .. " reset to the optimal provider.")
   return true
 end
 
 function CBC:SetHeaderAssignment(category, providerGUID)
-  if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
-  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return false end
+  if InCombatLockdown and InCombatLockdown() then
+    self:DebugAssignment("REJECT", "header change blocked by combat")
+    self:Print("Assignments are locked in combat.")
+    return false
+  end
+  if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then
+    self:DebugAssignment("REJECT", "header change blocked by matrix permissions")
+    self:Print("You cannot edit the shared matrix.")
+    return false
+  end
   if providerGUID then
     local provider = self.providers[providerGUID]
     local cap = provider and provider.categories and provider.categories[category]
     if not cap or not cap.greater then
+      self:DebugAssignment("REJECT", string.format(
+        "header %s provider=%s has no Greater capability",
+        tostring(category), self:ProviderName(providerGUID)
+      ))
       self:Print("That provider cannot supply this Greater buff.")
       return false
     end
   end
-  self.session.header[category] = providerGUID
   local revision = self:NextMatrixRevision()
   local writerGUID = UnitGUID("player")
-  self:SetHeaderVersion(category, revision, writerGUID)
-  if self.SendHeader then self:SendHeader(category, providerGUID, revision, writerGUID) end
-  self:Debug(string.format(
-    "Matrix header local r%d writer=%s category=%s provider=%s",
-    revision, tostring(writerGUID), tostring(category), tostring(providerGUID)
+  local tx = tostring(writerGUID) .. ":" .. revision
+  self:DebugAssignment("REQUEST", string.format(
+    "tx=%s header %s -> %s", tx, category, self:ProviderName(providerGUID)
   ))
+  if providerGUID then
+    self:ClearConflictingHeaderAssignments(
+      category, providerGUID, revision, writerGUID, true
+    )
+  end
+  self.session.header[category] = providerGUID
+  self:SetHeaderVersion(category, revision, writerGUID)
+  self:DebugAssignment("STORE", string.format(
+    "tx=%s header %s=%s r%d",
+    tx, category, self:ProviderName(providerGUID), revision
+  ))
+  if self.SendHeader then self:SendHeader(category, providerGUID, revision, writerGUID) end
+  self:QueueAssignmentAudit({
+    tx=tx,kind="header",revision=revision,writer=writerGUID,
+    category=category,providerGUID=providerGUID,origin="local",
+  })
   self:Rebuild("header")
   if providerGUID then
     self:Print(self:ShortName(self.providers[providerGUID].name) .. " assigned Greater " .. self.Categories[category].label .. ".")

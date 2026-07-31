@@ -182,22 +182,34 @@ function CBC:OnAddonMessage(prefix, message, channel, sender)
       local current = self.session.cellVersions[recipientGUID][category]
       if self:IsNewerMatrixVersion(current, revision, writerGUID) then
         self.session.cells[recipientGUID] = self.session.cells[recipientGUID] or {}
-        self.session.cells[recipientGUID][category] = providerGUID ~= "-" and providerGUID or nil
+        local selectedProviderGUID = providerGUID ~= "-" and providerGUID or nil
+        if selectedProviderGUID then
+          self:ClearConflictingCellOverrides(
+            recipientGUID, category, selectedProviderGUID, revision, writerGUID, false
+          )
+        end
+        self.session.cells[recipientGUID][category] = selectedProviderGUID
         self:SetCellVersion(recipientGUID, category, revision, writerGUID)
         self.session.revision = math.max(tonumber(self.session.revision) or 0, revision)
-        self:Debug(string.format(
-          "Matrix cell accepted r%d writer=%s via=%s recipient=%s category=%s provider=%s",
-          revision, tostring(writerGUID), tostring(senderMember.guid), tostring(recipientGUID),
-          tostring(category), tostring(providerGUID)
+        local tx = tostring(writerGUID) .. ":" .. revision
+        self:DebugAssignment("RECEIVE", string.format(
+          "tx=%s via=%s cell %s/%s -> %s",
+          tx, tostring(senderMember.shortName), self:ProviderName(recipientGUID),
+          category, self:ProviderName(selectedProviderGUID)
         ))
+        self:QueueAssignmentAudit({
+          tx=tx,kind="cell",revision=revision,writer=writerGUID,
+          recipientGUID=recipientGUID,recipientName=self:ProviderName(recipientGUID),
+          category=category,providerGUID=selectedProviderGUID,origin="remote",
+        })
         if providerGUID == UnitGUID("player") then
           local recipient = self.rosterByGUID[recipientGUID]
           self:Print(senderMember.shortName .. " assigned you " .. self.Categories[category].short .. " on " .. (recipient and recipient.shortName or "a player") .. ".")
         end
       else
-        self:Debug(string.format(
-          "Matrix cell ignored stale r%d writer=%s recipient=%s category=%s current=%s/%s",
-          revision, tostring(writerGUID), tostring(recipientGUID), tostring(category),
+        self:DebugAssignment("STALE", string.format(
+          "cell tx=%s:%s %s/%s current=%s/%s",
+          tostring(writerGUID), revision, self:ProviderName(recipientGUID), tostring(category),
           tostring(current and current.revision), tostring(current and current.writer)
         ))
       end
@@ -211,21 +223,32 @@ function CBC:OnAddonMessage(prefix, message, channel, sender)
       self.session.headerVersions = self.session.headerVersions or {}
       local current = self.session.headerVersions[category]
       if self:IsNewerMatrixVersion(current, revision, writerGUID) then
-        self.session.header[category] = providerGUID ~= "-" and providerGUID or nil
+        local selectedProviderGUID = providerGUID ~= "-" and providerGUID or nil
+        if selectedProviderGUID then
+          self:ClearConflictingHeaderAssignments(
+            category, selectedProviderGUID, revision, writerGUID, false
+          )
+        end
+        self.session.header[category] = selectedProviderGUID
         self:SetHeaderVersion(category, revision, writerGUID)
         self.session.revision = math.max(tonumber(self.session.revision) or 0, revision)
-        self:Debug(string.format(
-          "Matrix header accepted r%d writer=%s via=%s category=%s provider=%s",
-          revision, tostring(writerGUID), tostring(senderMember.guid),
-          tostring(category), tostring(providerGUID)
+        local tx = tostring(writerGUID) .. ":" .. revision
+        self:DebugAssignment("RECEIVE", string.format(
+          "tx=%s via=%s header %s -> %s",
+          tx, tostring(senderMember.shortName), category,
+          self:ProviderName(selectedProviderGUID)
         ))
+        self:QueueAssignmentAudit({
+          tx=tx,kind="header",revision=revision,writer=writerGUID,
+          category=category,providerGUID=selectedProviderGUID,origin="remote",
+        })
         if providerGUID == UnitGUID("player") then
           self:Print(senderMember.shortName .. " assigned your Greater " .. self.Categories[category].label .. ".")
         end
       else
-        self:Debug(string.format(
-          "Matrix header ignored stale r%d writer=%s category=%s current=%s/%s",
-          revision, tostring(writerGUID), tostring(category),
+        self:DebugAssignment("STALE", string.format(
+          "header tx=%s:%s %s current=%s/%s",
+          tostring(writerGUID), revision, tostring(category),
           tostring(current and current.revision), tostring(current and current.writer)
         ))
       end

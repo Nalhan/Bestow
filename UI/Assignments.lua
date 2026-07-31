@@ -6,6 +6,21 @@ local function MenuTitle(text)
   return {text=text,isTitle=true,notCheckable=true,disabled=true}
 end
 
+local function ProviderMenuCallback(
+  selectedGUID, selectedName, category, recipientGUID, isHeader
+)
+  return function()
+    CloseDropDownMenus()
+    CBC:DebugAssignment("UI", string.format(
+      "%s category=%s recipient=%s selected=%s/%s",
+      isHeader and "header" or "cell", category,
+      CBC:ProviderName(recipientGUID), selectedName, tostring(selectedGUID)
+    ))
+    if isHeader then CBC:SetHeaderAssignment(category, selectedGUID)
+    else CBC:SetCellOverride(recipientGUID, category, selectedGUID) end
+  end
+end
+
 function CBC:GetBestAvailableWeightedScore(member, category)
   local bestScore, bestBase, bestRaw, bestBonus, bestExact
   for guid, provider in pairs(self.providers) do
@@ -45,16 +60,18 @@ function CBC:OpenProviderMenu(anchor, category, recipientGUID, isHeader)
     local selectedGUID = choice.guid
     local selectedName = choice.member.shortName
     local selectedClassToken = choice.member.classToken
+    local selectedCategory = category
+    local selectedRecipientGUID = recipientGUID
+    local selectedIsHeader = isHeader
     menu[#menu+1] = {
       text=selectedName .. " - " .. (class and class.name or selectedClassToken)
         .. " (Tier " .. choice.cap.tier .. (choice.cap.independent and ", Independent" or "") .. ")",
       colorCode="|cff"..self:ClassHex(selectedClassToken),
       notCheckable=true,
-      func=function()
-        CloseDropDownMenus()
-        if isHeader then CBC:SetHeaderAssignment(category, selectedGUID)
-        else CBC:SetCellOverride(recipientGUID, category, selectedGUID) end
-      end,
+      func=ProviderMenuCallback(
+        selectedGUID, selectedName, selectedCategory,
+        selectedRecipientGUID, selectedIsHeader
+      ),
     }
     end
   end
