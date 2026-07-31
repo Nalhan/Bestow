@@ -5,7 +5,7 @@ _G.Bestow = CBC
 
 CBC.name = addonName or "Bestow"
 CBC.version = "0.2.1-alpha"
-CBC.protocol = 4
+CBC.protocol = 5
 CBC.prefix = "BESTOW1"
 CBC.modules = {}
 CBC.events = {}

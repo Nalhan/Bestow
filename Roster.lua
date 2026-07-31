@@ -467,7 +467,8 @@ function CBC:RefreshSession()
       self.specInspectActive = nil
       self.soloSession = {
         key=UnitGUID("player") or "solo",
-        header={},cells={},providerOverrides={},revision=0,
+        header={},cells={},headerVersions={},cellVersions={},
+        providerOverrides={},revision=0,
       }
     end
     self.session = self.soloSession
@@ -477,7 +478,10 @@ function CBC:RefreshSession()
   local key = self:GetGroupKey()
   if not self.groupSessionActive then
     if not self.db.session or self.db.session.key ~= key then
-      self.db.session = {key=key,header={},cells={},providerOverrides={},revision=0}
+      self.db.session = {
+        key=key,header={},cells={},headerVersions={},cellVersions={},
+        providerOverrides={},revision=0,
+      }
     end
     self.groupSessionActive = true
   else
@@ -488,8 +492,26 @@ function CBC:RefreshSession()
   self.session = self.db.session
   self.session.header = self.session.header or {}
   self.session.cells = self.session.cells or {}
+  self.session.headerVersions = self.session.headerVersions or {}
+  self.session.cellVersions = self.session.cellVersions or {}
   self.session.providerOverrides = self.session.providerOverrides or {}
   self.session.revision = self.session.revision or 0
+  local writerGUID = UnitGUID("player") or ""
+  for category in pairs(self.session.header) do
+    if not self.session.headerVersions[category] then
+      self.session.headerVersions[category] = {revision=self.session.revision,writer=writerGUID}
+    end
+  end
+  for recipientGUID, categories in pairs(self.session.cells) do
+    self.session.cellVersions[recipientGUID] = self.session.cellVersions[recipientGUID] or {}
+    for category in pairs(categories) do
+      if not self.session.cellVersions[recipientGUID][category] then
+        self.session.cellVersions[recipientGUID][category] = {
+          revision=self.session.revision,writer=writerGUID,
+        }
+      end
+    end
+  end
 end
 
 function CBC:GetLocalSpec()

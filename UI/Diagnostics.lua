@@ -175,6 +175,33 @@ function CBC:BuildDiagnosticText()
     lines[#lines+1]="  "..(provider and provider.name or guid).." -> "..category
   end
   lines[#lines+1]=""
+  lines[#lines+1]="Matrix synchronization:"
+  lines[#lines+1]="  Local clock: "..tostring(self.session and self.session.revision or 0)
+  for _,category in ipairs(SortedKeys(self.session and self.session.headerVersions or {})) do
+    local version=self.session.headerVersions[category]
+    local guid=self.session.header and self.session.header[category]
+    local provider=guid and self.providers[guid]
+    lines[#lines+1]=string.format(
+      "  header %s=%s revision=%s writer=%s",
+      category,provider and provider.name or guid or "AUTO",
+      tostring(version.revision),tostring(version.writer)
+    )
+  end
+  for _,recipientGUID in ipairs(SortedKeys(self.session and self.session.cellVersions or {})) do
+    local recipient=self.rosterByGUID[recipientGUID]
+    for _,category in ipairs(SortedKeys(self.session.cellVersions[recipientGUID])) do
+      local version=self.session.cellVersions[recipientGUID][category]
+      local guid=self.session.cells[recipientGUID] and self.session.cells[recipientGUID][category]
+      local provider=guid and self.providers[guid]
+      lines[#lines+1]=string.format(
+        "  cell %s/%s=%s revision=%s writer=%s",
+        recipient and recipient.shortName or recipientGUID,category,
+        provider and provider.name or guid or "AUTO",
+        tostring(version.revision),tostring(version.writer)
+      )
+    end
+  end
+  lines[#lines+1]=""
   lines[#lines+1]="Pending actions:"
   for index,action in ipairs(self.actions) do
     lines[#lines+1]=string.format("  %d %s -> %s spell=%s state=%s",index,action.category,action.targetName,tostring(action.spellID),tostring(action.state))

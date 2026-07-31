@@ -354,6 +354,37 @@ local function ActionSort(a,b)
   return a.category < b.category
 end
 
+function CBC:NextMatrixRevision()
+  self.session.revision = (tonumber(self.session.revision) or 0) + 1
+  return self.session.revision
+end
+
+function CBC:SetCellVersion(recipientGUID, category, revision, writerGUID)
+  self.session.cellVersions = self.session.cellVersions or {}
+  self.session.cellVersions[recipientGUID] = self.session.cellVersions[recipientGUID] or {}
+  self.session.cellVersions[recipientGUID][category] = {
+    revision=tonumber(revision) or 0,
+    writer=writerGUID or UnitGUID("player") or "",
+  }
+end
+
+function CBC:SetHeaderVersion(category, revision, writerGUID)
+  self.session.headerVersions = self.session.headerVersions or {}
+  self.session.headerVersions[category] = {
+    revision=tonumber(revision) or 0,
+    writer=writerGUID or UnitGUID("player") or "",
+  }
+end
+
+function CBC:IsNewerMatrixVersion(current, revision, writerGUID)
+  revision = tonumber(revision) or 0
+  writerGUID = writerGUID or ""
+  if not current then return true end
+  local currentRevision = tonumber(current.revision) or 0
+  if revision ~= currentRevision then return revision > currentRevision end
+  return writerGUID > (current.writer or "")
+end
+
 function CBC:BuildActions(coverageReady)
   if not coverageReady then self:ScanAuras() end
   wipe(self.actions)
@@ -460,8 +491,14 @@ function CBC:SetCellOverride(recipientGUID, category, providerGUID)
   end
   self.session.cells[recipientGUID] = self.session.cells[recipientGUID] or {}
   self.session.cells[recipientGUID][category] = providerGUID
-  self.session.revision = self.session.revision + 1
-  if self.SendCell then self:SendCell(recipientGUID, category, providerGUID) end
+  local revision = self:NextMatrixRevision()
+  local writerGUID = UnitGUID("player")
+  self:SetCellVersion(recipientGUID, category, revision, writerGUID)
+  if self.SendCell then self:SendCell(recipientGUID, category, providerGUID, revision, writerGUID) end
+  self:Debug(string.format(
+    "Matrix cell local r%d writer=%s recipient=%s category=%s provider=%s",
+    revision, tostring(writerGUID), tostring(recipientGUID), tostring(category), tostring(providerGUID)
+  ))
   self:Rebuild("cell override")
   local recipient = self.rosterByGUID[recipientGUID]
   self:Print(self:ShortName(provider.name) .. " assigned " .. self.Categories[category].label .. " to " .. recipient.shortName .. ".")
@@ -472,8 +509,14 @@ function CBC:ResetCellOverride(recipientGUID, category)
   if InCombatLockdown and InCombatLockdown() then self:Print("Assignments are locked in combat.") return false end
   if not self:IsGlobalEditor(self.rosterByGUID[UnitGUID("player")]) then self:Print("You cannot edit the shared matrix.") return false end
   if self.session.cells[recipientGUID] then self.session.cells[recipientGUID][category] = nil end
-  self.session.revision = self.session.revision + 1
-  if self.SendCell then self:SendCell(recipientGUID, category, nil) end
+  local revision = self:NextMatrixRevision()
+  local writerGUID = UnitGUID("player")
+  self:SetCellVersion(recipientGUID, category, revision, writerGUID)
+  if self.SendCell then self:SendCell(recipientGUID, category, nil, revision, writerGUID) end
+  self:Debug(string.format(
+    "Matrix cell reset r%d writer=%s recipient=%s category=%s",
+    revision, tostring(writerGUID), tostring(recipientGUID), tostring(category)
+  ))
   self:Rebuild("cell reset")
   self:Print(self.Categories[category].label .. " reset to the optimal provider.")
   return true
@@ -491,8 +534,14 @@ function CBC:SetHeaderAssignment(category, providerGUID)
     end
   end
   self.session.header[category] = providerGUID
-  self.session.revision = self.session.revision + 1
-  if self.SendHeader then self:SendHeader(category, providerGUID) end
+  local revision = self:NextMatrixRevision()
+  local writerGUID = UnitGUID("player")
+  self:SetHeaderVersion(category, revision, writerGUID)
+  if self.SendHeader then self:SendHeader(category, providerGUID, revision, writerGUID) end
+  self:Debug(string.format(
+    "Matrix header local r%d writer=%s category=%s provider=%s",
+    revision, tostring(writerGUID), tostring(category), tostring(providerGUID)
+  ))
   self:Rebuild("header")
   if providerGUID then
     self:Print(self:ShortName(self.providers[providerGUID].name) .. " assigned Greater " .. self.Categories[category].label .. ".")

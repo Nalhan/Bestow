@@ -69,12 +69,22 @@ function CBC:BroadcastState()
   end
   local me = self.rosterByGUID[playerGUID]
   if self:IsGlobalEditor(me) and self.session then
-    for category, providerGUID in pairs(self.session.header or {}) do
-      self:Send("A|" .. category .. "|" .. providerGUID)
+    for category, version in pairs(self.session.headerVersions or {}) do
+      self:SendHeader(
+        category,
+        self.session.header and self.session.header[category],
+        version.revision,
+        version.writer
+      )
     end
-    for recipientGUID, categories in pairs(self.session.cells or {}) do
-      for category, providerGUID in pairs(categories) do
-        self:Send("X|" .. recipientGUID .. "|" .. category .. "|" .. providerGUID)
+    for recipientGUID, categories in pairs(self.session.cellVersions or {}) do
+      for category, version in pairs(categories) do
+        local providerGUID = self.session.cells[recipientGUID]
+          and self.session.cells[recipientGUID][category]
+        self:SendCell(
+          recipientGUID, category, providerGUID,
+          version.revision, version.writer
+        )
       end
     end
   end
@@ -97,12 +107,18 @@ function CBC:SendOverride(providerGUID, recipientGUID, category)
   self:Send("O|" .. providerGUID .. "|" .. recipientGUID .. "|" .. (category or "-"))
 end
 
-function CBC:SendCell(recipientGUID, category, providerGUID)
-  self:Send("X|" .. recipientGUID .. "|" .. category .. "|" .. (providerGUID or "-"))
+function CBC:SendCell(recipientGUID, category, providerGUID, revision, writerGUID)
+  self:Send(table.concat({
+    "X", tonumber(revision) or 0, writerGUID or UnitGUID("player") or "-",
+    recipientGUID, category, providerGUID or "-",
+  }, "|"))
 end
 
-function CBC:SendHeader(category, providerGUID)
-  self:Send("A|" .. category .. "|" .. (providerGUID or "-"))
+function CBC:SendHeader(category, providerGUID, revision, writerGUID)
+  self:Send(table.concat({
+    "A", tonumber(revision) or 0, writerGUID or UnitGUID("player") or "-",
+    category, providerGUID or "-",
+  }, "|"))
 end
 
 function CBC:OnAddonMessage(prefix, message, channel, sender)
@@ -156,21 +172,62 @@ function CBC:OnAddonMessage(prefix, message, channel, sender)
       end
     end
   elseif kind == "X" then
-    local recipientGUID, category, providerGUID = string.match(payload, "^([^|]+)|([^|]+)|([^|]+)$")
-    if recipientGUID and self:IsGlobalEditor(senderMember) and self.Categories[category] then
-      self.session.cells[recipientGUID] = self.session.cells[recipientGUID] or {}
-      self.session.cells[recipientGUID][category] = providerGUID ~= "-" and providerGUID or nil
-      if providerGUID == UnitGUID("player") then
-        local recipient = self.rosterByGUID[recipientGUID]
-        self:Print(senderMember.shortName .. " assigned you " .. self.Categories[category].short .. " on " .. (recipient and recipient.shortName or "a player") .. ".")
+    if not provider.protocolCompatible then return end
+    local revisionText, writerGUID, recipientGUID, category, providerGUID =
+      string.match(payload, "^(%d+)|([^|]+)|([^|]+)|([^|]+)|([^|]+)$")
+    local revision = tonumber(revisionText)
+    if revision and recipientGUID and self:IsGlobalEditor(senderMember) and self.Categories[category] then
+      self.session.cellVersions = self.session.cellVersions or {}
+      self.session.cellVersions[recipientGUID] = self.session.cellVersions[recipientGUID] or {}
+      local current = self.session.cellVersions[recipientGUID][category]
+      if self:IsNewerMatrixVersion(current, revision, writerGUID) then
+        self.session.cells[recipientGUID] = self.session.cells[recipientGUID] or {}
+        self.session.cells[recipientGUID][category] = providerGUID ~= "-" and providerGUID or nil
+        self:SetCellVersion(recipientGUID, category, revision, writerGUID)
+        self.session.revision = math.max(tonumber(self.session.revision) or 0, revision)
+        self:Debug(string.format(
+          "Matrix cell accepted r%d writer=%s via=%s recipient=%s category=%s provider=%s",
+          revision, tostring(writerGUID), tostring(senderMember.guid), tostring(recipientGUID),
+          tostring(category), tostring(providerGUID)
+        ))
+        if providerGUID == UnitGUID("player") then
+          local recipient = self.rosterByGUID[recipientGUID]
+          self:Print(senderMember.shortName .. " assigned you " .. self.Categories[category].short .. " on " .. (recipient and recipient.shortName or "a player") .. ".")
+        end
+      else
+        self:Debug(string.format(
+          "Matrix cell ignored stale r%d writer=%s recipient=%s category=%s current=%s/%s",
+          revision, tostring(writerGUID), tostring(recipientGUID), tostring(category),
+          tostring(current and current.revision), tostring(current and current.writer)
+        ))
       end
     end
   elseif kind == "A" then
-    local category, providerGUID = string.match(payload, "^([^|]+)|([^|]+)$")
-    if category and self:IsGlobalEditor(senderMember) and self.Categories[category] then
-      self.session.header[category] = providerGUID ~= "-" and providerGUID or nil
-      if providerGUID == UnitGUID("player") then
-        self:Print(senderMember.shortName .. " assigned your Greater " .. self.Categories[category].label .. ".")
+    if not provider.protocolCompatible then return end
+    local revisionText, writerGUID, category, providerGUID =
+      string.match(payload, "^(%d+)|([^|]+)|([^|]+)|([^|]+)$")
+    local revision = tonumber(revisionText)
+    if revision and category and self:IsGlobalEditor(senderMember) and self.Categories[category] then
+      self.session.headerVersions = self.session.headerVersions or {}
+      local current = self.session.headerVersions[category]
+      if self:IsNewerMatrixVersion(current, revision, writerGUID) then
+        self.session.header[category] = providerGUID ~= "-" and providerGUID or nil
+        self:SetHeaderVersion(category, revision, writerGUID)
+        self.session.revision = math.max(tonumber(self.session.revision) or 0, revision)
+        self:Debug(string.format(
+          "Matrix header accepted r%d writer=%s via=%s category=%s provider=%s",
+          revision, tostring(writerGUID), tostring(senderMember.guid),
+          tostring(category), tostring(providerGUID)
+        ))
+        if providerGUID == UnitGUID("player") then
+          self:Print(senderMember.shortName .. " assigned your Greater " .. self.Categories[category].label .. ".")
+        end
+      else
+        self:Debug(string.format(
+          "Matrix header ignored stale r%d writer=%s category=%s current=%s/%s",
+          revision, tostring(writerGUID), tostring(category),
+          tostring(current and current.revision), tostring(current and current.writer)
+        ))
       end
     end
   end
