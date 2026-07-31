@@ -12,7 +12,6 @@ CBC.EffectsBySpellID = {
   [300863] = {manaPer5=25,resourceCostReductionPercent=5},
   [300864] = {manaPer5=30,resourceCostReductionPercent=5},
   [300865] = {manaPer5=33,resourceCostReductionPercent=5},
-  [300866] = {manaPer5=41,resourceCostReductionPercent=5},
   [300882] = {agility=8},
   [300883] = {agility=20},
   [300884] = {agility=36},

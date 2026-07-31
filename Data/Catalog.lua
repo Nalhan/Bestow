@@ -110,7 +110,7 @@ CBC.Categories = {
     label="Mana Efficiency", short="Mana",
     priority={{"SUNCLERIC"},{"SPIRITMAGE","WITCHDOCTOR"},{"CULTIST","WILDWALKER","PYROMANCER","STORMBRINGER","FLESHWARDEN","TINKER"}},
     variants={
-      devotionOfGrace=Family("SUNCLERIC",{"Devotion of Grace"},{"Greater Devotion of Grace"},{800852,300858,300859,300862,300863,300864,300865,300866},{681160}),
+      devotionOfGrace=Family("SUNCLERIC",{"Devotion of Grace"},{"Greater Devotion of Grace"},{800852,300858,300859,300862,300863,300864,300865},{681160}),
       etchingOfTheMagi=Family("SPIRITMAGE",{"Etching of the Magi"},{"Greater Etching of the Magi"},{560295},{561243}),
       resourcefulWuju=Family("WITCHDOCTOR",{"Resourceful Wuju"},{"Greater Resourceful Wuju"},{578344},{800195}),
       whispersOfYshaarj=Family("CULTIST",{"Whispers of Y'shaarj"},{"Greater Whispers of Y'shaarj"},{561389,561390,561391},{561392}),
