@@ -10,6 +10,42 @@ local function ProviderSort(a, b)
   return (a.provider.name or a.provider.guid) < (b.provider.name or b.provider.guid)
 end
 
+local function SharedProviderAvailable(usedProviders, providerGUID, cap)
+  if cap and cap.independent then return true end
+  local used = usedProviders[providerGUID]
+  if not used then return true end
+  return cap and cap.sharedCastKey and used == cap.sharedCastKey
+end
+
+local function MarkProviderUsed(usedProviders, providerGUID, cap)
+  if cap and not cap.independent then
+    usedProviders[providerGUID] = cap.sharedCastKey or true
+  end
+end
+
+local function AddSharedCastCells(self, cells, providerGUID, cap, source, occupiedCategories)
+  if not cap or not cap.sharedCastKey then return end
+  local provider = self.providers[providerGUID]
+  for category, sibling in pairs(provider and provider.categories or {}) do
+    if sibling.sharedCastKey == cap.sharedCastKey and sibling.single and not cells[category] then
+      cells[category] = {providerGUID=providerGUID,source=source}
+      if occupiedCategories then occupiedCategories[category] = true end
+    end
+  end
+end
+
+local function ExpandSharedCastCells(self, cells, occupiedCategories)
+  local existing = {}
+  for category, cell in pairs(cells) do
+    existing[#existing+1] = {category=category,cell=cell}
+  end
+  for _, entry in ipairs(existing) do
+    local provider = self.providers[entry.cell.providerGUID]
+    local cap = provider and provider.categories and provider.categories[entry.category]
+    AddSharedCastCells(self, cells, entry.cell.providerGUID, cap, entry.cell.source, occupiedCategories)
+  end
+end
+
 function CBC:CategoryDemand(category)
   local demand = 0
   for _, recipient in ipairs(self.roster) do
@@ -55,23 +91,26 @@ end
 
 function CBC:BuildGreaterBaseline(demandByCategory)
   local greater, independent, usedProviders, usedCategories = {}, {}, {}, {}
+  local function Assign(providerGUID, category, cap)
+    if usedCategories[category] or not SharedProviderAvailable(usedProviders, providerGUID, cap) then return false end
+    if cap.independent or usedProviders[providerGUID] then
+      independent[category] = providerGUID
+    else
+      greater[providerGUID] = category
+    end
+    MarkProviderUsed(usedProviders, providerGUID, cap)
+    usedCategories[category] = true
+    return true
+  end
   for category, providerGUID in pairs(self.session.header or {}) do
     local provider = self.providers[providerGUID]
     local cap = provider and provider.categories and provider.categories[category]
-    if cap and cap.greater and not usedCategories[category] and (cap.independent or not usedProviders[providerGUID]) then
-      if cap.independent then independent[category] = providerGUID
-      else greater[providerGUID], usedProviders[providerGUID] = category, true end
-      usedCategories[category] = true
-    end
+    if cap and cap.greater then Assign(providerGUID, category, cap) end
   end
   for providerGUID, provider in pairs(self.providers) do
     local category = provider.provisional and provider.observedCategory
     local cap = category and provider.categories and provider.categories[category]
-    if cap and cap.greater and not usedCategories[category] and (cap.independent or not usedProviders[providerGUID]) then
-      if cap.independent then independent[category] = providerGUID
-      else greater[providerGUID], usedProviders[providerGUID] = category, true end
-      usedCategories[category] = true
-    end
+    if cap and cap.greater then Assign(providerGUID, category, cap) end
   end
   local categories = {}
   for _, category in ipairs(self.CategoryOrder) do
@@ -88,12 +127,7 @@ function CBC:BuildGreaterBaseline(demandByCategory)
   for _, entry in ipairs(categories) do
     if not usedCategories[entry.key] and entry.demand > 0 then
       for _, choice in ipairs(self:GetProviderChoices(entry.key, true)) do
-        if choice.cap.independent or not usedProviders[choice.guid] then
-          if choice.cap.independent then independent[entry.key] = choice.guid
-          else greater[choice.guid], usedProviders[choice.guid] = entry.key, true end
-          usedCategories[entry.key] = true
-          break
-        end
+        if Assign(choice.guid, entry.key, choice.cap) then break end
       end
     end
   end
@@ -114,7 +148,7 @@ function CBC:FillAvailableAssignments(member, cells, baseline)
     occupiedCategories[category] = true
     local provider = self.providers[cell.providerGUID]
     local cap = provider and provider.categories and provider.categories[category]
-    if not (cap and cap.independent) then occupiedProviders[cell.providerGUID] = true end
+    MarkProviderUsed(occupiedProviders, cell.providerGUID, cap)
   end
   local candidates = {}
   for guid, provider in pairs(self.providers) do
@@ -153,9 +187,10 @@ function CBC:FillAvailableAssignments(member, cells, baseline)
     return a.providerName < b.providerName
   end)
   for _, candidate in ipairs(candidates) do
-    if (candidate.independent or not occupiedProviders[candidate.guid]) and not occupiedCategories[candidate.category] then
+    if SharedProviderAvailable(occupiedProviders, candidate.guid, candidate.cap) and not occupiedCategories[candidate.category] then
       cells[candidate.category] = {providerGUID=candidate.guid,source="auto"}
-      if not candidate.independent then occupiedProviders[candidate.guid] = true end
+      AddSharedCastCells(self, cells, candidate.guid, candidate.cap, "auto", occupiedCategories)
+      MarkProviderUsed(occupiedProviders, candidate.guid, candidate.cap)
       occupiedCategories[candidate.category] = true
     end
   end
@@ -191,10 +226,10 @@ end
 function CBC:DeriveGreater(cellsByRecipient, baseline, independentBaseline, demandByCategory)
   local counts, result, usedProviders, usedCategories = {}, {}, {}, {}
   local function Assign(providerGUID, category, cap)
-    if usedCategories[category] or (not cap.independent and usedProviders[providerGUID]) then return false end
+    if usedCategories[category] or not SharedProviderAvailable(usedProviders, providerGUID, cap) then return false end
     result[category] = providerGUID
     usedCategories[category] = true
-    if not cap.independent then usedProviders[providerGUID] = true end
+    MarkProviderUsed(usedProviders, providerGUID, cap)
     return true
   end
   for _, cells in pairs(cellsByRecipient) do
@@ -271,11 +306,15 @@ function CBC:BuildAssignments()
           occupied[category] = true
         end
       end
+      ExpandSharedCastCells(self, cells, occupied)
     else
       self:FillAvailableAssignments(member, cells, baseline)
     end
   end
   self:ApplyOverrides(cellsByRecipient)
+  for _, cells in pairs(cellsByRecipient) do
+    ExpandSharedCastCells(self, cells)
+  end
   if not raid then
     for _, member in ipairs(self.roster) do
       self:FillAvailableAssignments(member, cellsByRecipient[member.guid], baseline)
@@ -373,6 +412,28 @@ function CBC:BuildActions(coverageReady)
       end
     end
   end
+  local unique, byCast = {}, {}
+  for _, action in ipairs(self.actions) do
+    local castKey = table.concat({
+      action.mass and "greater" or "single",
+      tostring(action.spellID or action.spellName),
+      tostring(action.targetGUID or action.unit or "player"),
+    }, ":")
+    local existing = byCast[castKey]
+    if existing then
+      existing.coveredCategories[action.category] = true
+      if action.priority < existing.priority then
+        existing.priority = action.priority
+        existing.state = action.state
+      end
+    else
+      action.coveredCategories = {[action.category]=true}
+      byCast[castKey] = action
+      unique[#unique+1] = action
+    end
+  end
+  wipe(self.actions)
+  for _, action in ipairs(unique) do self.actions[#self.actions+1] = action end
   table.sort(self.actions, ActionSort)
 end
 

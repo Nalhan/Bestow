@@ -76,12 +76,19 @@ Initial categories:
 | `attackPower` | Attack Power | `AP` |
 | `spellPower` | Spell Power | `SP` |
 | `percentStats` | All Stats | `All Stats` |
-| `mana` | Mana Efficiency | `Mana` |
+| `manaRegen` | Mana Regeneration | `MP5` |
+| `costReduction` | Resource Cost Reduction | `Cost` |
 | `armorStats` | Stats + Armor | `Stats+` |
 
 Each category also defines a canonical display icon. The effect category owns
 the compact label; provider-specific spell names never leak into space-limited
 assignment cells or cast rows.
+
+MP5 and resource-cost reduction are separate compatibility groups and may
+coexist. A compound family can satisfy multiple groups with one aura and one
+cast. `Devotion of Grace` is the initial compound case: it fills both
+`manaRegen` and `costReduction`. The solver represents both cells but consumes
+only one Sun Cleric buff slot and emits only one cast action.
 
 Templar's All Stats family uses different single and raid-wide names:
 `Gift of Fervor` is the individual 10% Stats cast and

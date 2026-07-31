@@ -452,7 +452,11 @@ function CBC:BuildCompactRows()
   local provider = self.providers[playerGUID]
   local actionByTargetCategory = {}
   for _, action in ipairs(self.actions) do
-    if action.targetGUID then actionByTargetCategory[action.targetGUID..":"..action.category] = action end
+    if action.targetGUID then
+      for category in pairs(action.coveredCategories or {[action.category]=true}) do
+        actionByTargetCategory[action.targetGUID..":"..category] = action
+      end
+    end
   end
   for recipientGUID, categories in pairs(targets) do
     for category in pairs(categories) do

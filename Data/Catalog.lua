@@ -15,7 +15,8 @@ end
 
 CBC.CategoryOrder = {
   "strength", "stamina", "agility", "intellect", "spirit",
-  "attackPower", "spellPower", "percentStats", "mana", "armorStats",
+  "attackPower", "spellPower", "percentStats", "manaRegen",
+  "costReduction", "armorStats",
 }
 
 CBC.Categories = {
@@ -106,19 +107,26 @@ CBC.Categories = {
       etchingOfTheLeylines=Family("SPIRITMAGE",{"Etching of the Leylines"},{"Greater Etching of the Leylines"},{561236},{561242}),
     },
   },
-  mana = {
-    label="Mana Efficiency", short="Mana",
-    priority={{"SUNCLERIC"},{"SPIRITMAGE","WITCHDOCTOR"},{"CULTIST","WILDWALKER","PYROMANCER","STORMBRINGER","FLESHWARDEN","TINKER"}},
+  manaRegen = {
+    label="Mana Regeneration", short="MP5",
+    priority={{"SUNCLERIC"},{"CULTIST","WILDWALKER","PYROMANCER","STORMBRINGER","TINKER"}},
     variants={
-      devotionOfGrace=Family("SUNCLERIC",{"Devotion of Grace"},{"Greater Devotion of Grace"},{800852,300858,300859,300862,300863,300864,300865},{681160}),
-      etchingOfTheMagi=Family("SPIRITMAGE",{"Etching of the Magi"},{"Greater Etching of the Magi"},{560295},{561243}),
-      resourcefulWuju=Family("WITCHDOCTOR",{"Resourceful Wuju"},{"Greater Resourceful Wuju"},{578344},{800195}),
+      devotionOfGrace=Family("SUNCLERIC",{"Devotion of Grace"},{"Greater Devotion of Grace"},{800852,300858,300859,300862,300863,300864,300865},{681160},{sharedCastKey="devotionOfGrace"}),
       whispersOfYshaarj=Family("CULTIST",{"Whispers of Y'shaarj"},{"Greater Whispers of Y'shaarj"},{561389,561390,561391},{561392}),
       groveInstinct=Family("WILDWALKER",{"Grove Instinct"},{"Greater Grove Instinct"},{572810,572811,572812,572813,572814,572815,572816},{572817}),
       sealOfAlar=Family("PYROMANCER",{"Seal of Al'ar"},{"Greater Seal of Al'ar"},{803649,803729,807704,807770,808012},{808060}),
       callOfTheWind=Family("STORMBRINGER",{"Call of the Wind"},{"Greater Call of the Wind"},{804018,503319,503320,503321,503322,503323},{680291}),
-      markOfZeliek=Family("FLESHWARDEN",{"Mark of Zeliek"},{"Greater Mark of Zeliek"},{803671},{803731}),
       manaModule=Family("TINKER",{"Mana Module"},{"Greater Mana Module"},{803658,803659,803660,803661,803662,803663,803664},{803665}),
+    },
+  },
+  costReduction = {
+    label="Cost Reduction", short="Cost",
+    priority={{"SUNCLERIC"},{"SPIRITMAGE","WITCHDOCTOR"},{"FLESHWARDEN"}},
+    variants={
+      devotionOfGrace=Family("SUNCLERIC",{"Devotion of Grace"},{"Greater Devotion of Grace"},{800852,300858,300859,300862,300863,300864,300865},{681160},{sharedCastKey="devotionOfGrace"}),
+      etchingOfTheMagi=Family("SPIRITMAGE",{"Etching of the Magi"},{"Greater Etching of the Magi"},{560295},{561243}),
+      resourcefulWuju=Family("WITCHDOCTOR",{"Resourceful Wuju"},{"Greater Resourceful Wuju"},{578344},{800195}),
+      markOfZeliek=Family("FLESHWARDEN",{"Mark of Zeliek"},{"Greater Mark of Zeliek"},{803671},{803731}),
     },
   },
   armorStats = {

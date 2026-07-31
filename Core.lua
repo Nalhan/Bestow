@@ -5,7 +5,7 @@ _G.Bestow = CBC
 
 CBC.name = addonName or "Bestow"
 CBC.version = "0.2.1-alpha"
-CBC.protocol = 3
+CBC.protocol = 4
 CBC.prefix = "BESTOW1"
 CBC.modules = {}
 CBC.events = {}
@@ -123,6 +123,12 @@ end
 function CBC:Initialize()
   BestowDB = BestowDB or CoABuffCoordinatorDB or {}
   CopyDefaults(BestowDB, defaults)
+  for _, weights in pairs(BestowDB.preferences or {}) do
+    if weights.mana ~= nil then
+      if weights.manaRegen == nil then weights.manaRegen = weights.mana end
+      if weights.costReduction == nil then weights.costReduction = weights.mana end
+    end
+  end
   self.db = BestowDB
   self:BuildClassIndexes()
   self:BuildCatalogIndexes()

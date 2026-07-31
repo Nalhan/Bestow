@@ -26,10 +26,12 @@ function CBC:BuildPreferenceDefaults()
     if physical then weights.attackPower = ESSENTIAL end
     if magical then weights.spellPower = ESSENTIAL end
     if spec.role == "HEALER" then
-      weights.mana = ESSENTIAL
+      weights.manaRegen = ESSENTIAL
+      weights.costReduction = ESSENTIAL
       weights.spirit = math.max(weights.spirit or 0, USEFUL)
     elseif magical then
-      weights.mana = USEFUL
+      weights.manaRegen = USEFUL
+      weights.costReduction = USEFUL
     end
     if spec.role == "TANK" then
       weights.stamina = ESSENTIAL

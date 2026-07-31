@@ -414,7 +414,7 @@ function CBC:RefreshRoster()
             for category, family in pairs(self.familyByProviderCategory[token] or {}) do
               local capability = {
                 category=category,family=family.key,provider=token,tier=family.tier,
-                independent=family.independent,
+                independent=family.independent,sharedCastKey=family.sharedCastKey,
                 single=family.singleIDs[#family.singleIDs],greater=family.greaterIDs[#family.greaterIDs],
                 singleRank=#family.singleIDs,greaterRank=#family.greaterIDs,
                 singleEffect=self:GetSpellEffect(family.singleIDs[#family.singleIDs]),
