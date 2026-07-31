@@ -15,6 +15,12 @@ local function SortedKeys(source)
   return keys
 end
 
+local function CountKeys(source)
+  local count = 0
+  for _ in pairs(source or {}) do count = count + 1 end
+  return count
+end
+
 local function AppendTail(lines, values, maximum)
   local first = math.max(1, #(values or {}) - maximum + 1)
   for index=first,#(values or {}) do
@@ -58,10 +64,12 @@ function CBC:AppendCurrentSpecValuationDiagnostics(lines, specID, localMember)
   lines[#lines+1] = "  Profile: "..tostring(profile.sourceKey).." role="..tostring(profile.role)
   lines[#lines+1] = "  Configured stat weights:"
   local bundled = self:GetBisBeardStatWeights(specID)
+  local defaults = self:GetConfigurableStatWeightDefaults(specID)
   local overrides = self.db.statWeightOverrides and self.db.statWeightOverrides[specID]
   for _, key in ipairs(SortedKeys(weights)) do
+    local sourceName = bundled[key] ~= nil and "BisBeard" or "Default"
     local suffix = overrides and overrides[key] ~= nil
-      and " EDITED (BisBeard="..FormatNumber(bundled[key])..")" or ""
+      and " EDITED ("..sourceName.."="..FormatNumber(defaults[key])..")" or ""
     lines[#lines+1] = "    "..key.."="..FormatNumber(weights[key])..suffix
   end
 
@@ -162,9 +170,15 @@ function CBC:BuildDiagnosticText()
     end
     local cached=self.externalSpecCache[member.guid]
     lines[#lines+1]=string.format(
-      "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s inspect=%s caSlot=%s",
+      "  %s %s spec=%s(%s) source=%s addon=%s provisional=%s weights=%s/rev=%s/hash=%s bonuses=%s/rev=%s/count=%s inspect=%s caSlot=%s",
       member.name,member.classToken,tostring(member.specName),tostring(member.specID),
       tostring(member.specSource),tostring(provider and provider.addon),tostring(provider and provider.provisional),
+      provider and provider.statWeightsAdvertised
+        and (provider.statWeightSourceCompatible and "advertised" or "source-mismatch") or "bundled",
+      tostring(provider and provider.statWeightRevision),tostring(provider and provider.statWeightHash),
+      provider and provider.bonusPointsAdvertised and "advertised" or "stock",
+      tostring(provider and provider.bonusPointRevision),
+      tostring(CountKeys(provider and provider.bonusPointOverrides)),
       inspectState,tostring(cached and cached.slot)
     )
     for category,observed in pairs(provider and provider.observedCapabilities or {}) do

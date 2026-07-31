@@ -15,6 +15,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SITE = "https://coa.bisbeard.com";
 const EXPECTED_PROFILE_COUNT = 70;
+const OPTIONAL_WEIGHT_KEYS = ["mp5"];
 
 const sourceClassAliases = {
   "Blood Mage": "Bloodmage",
@@ -79,6 +80,16 @@ function findProfiles(moduleExports) {
   throw new Error(`Could not identify the ${EXPECTED_PROFILE_COUNT}-profile export`);
 }
 
+function findAvailableStats(moduleExports) {
+  for (const value of Object.values(moduleExports)) {
+    if (!Array.isArray(value)) continue;
+    if (value.includes("strength") && value.includes("agility") && value.includes("mp5")) {
+      return value;
+    }
+  }
+  return [];
+}
+
 function resolveProfiles(bestowSpecs, profiles) {
   const resolved = [];
   const used = new Set();
@@ -135,8 +146,10 @@ function csvCell(value) {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-function buildCSV(resolved) {
-  const weightKeys = [...new Set(resolved.flatMap(item => Object.keys(item.profile.weights)))].sort();
+function buildCSV(resolved, availableStats) {
+  const sourceKeys = resolved.flatMap(item => Object.keys(item.profile.weights));
+  const optionalKeys = OPTIONAL_WEIGHT_KEYS.filter(key => availableStats.includes(key));
+  const weightKeys = [...new Set([...sourceKeys, ...optionalKeys])].sort();
   const header = ["spec_id", "class_token", "class_name", "spec_name", "source_key", "role", ...weightKeys];
   const rows = [header];
   for (const item of resolved) {
@@ -168,16 +181,24 @@ async function main() {
     await writeFile(modulePath, moduleText, "utf8");
     const moduleExports = await import(`${pathToFileURL(modulePath).href}?sha=${sha256}`);
     const profiles = findProfiles(moduleExports);
+    const availableStats = findAvailableStats(moduleExports);
     const classesLua = await readFile(join(ROOT, "Data", "Classes.lua"), "utf8");
     const bestowSpecs = parseBestowSpecs(classesLua);
     if (bestowSpecs.length !== EXPECTED_PROFILE_COUNT) {
       throw new Error(`Parsed ${bestowSpecs.length} Bestow specs; expected ${EXPECTED_PROFILE_COUNT}`);
     }
     const resolved = resolveProfiles(bestowSpecs, profiles);
-    const metadata = {site: SITE, mainURL, moduleURL, sha256, retrievedUTC, profileCount: resolved.length};
+    const metadata = {
+      site: SITE, mainURL, moduleURL, sha256, retrievedUTC,
+      profileCount: resolved.length, availableStats,
+    };
 
     await writeFile(join(ROOT, "Data", "StatWeights.lua"), buildLua(resolved, metadata), "utf8");
-    await writeFile(join(ROOT, "docs", "bisbeard_stat_weights.csv"), buildCSV(resolved), "utf8");
+    await writeFile(
+      join(ROOT, "docs", "bisbeard_stat_weights.csv"),
+      buildCSV(resolved, availableStats),
+      "utf8",
+    );
     await writeFile(
       join(ROOT, "docs", "bisbeard_stat_weights_source.json"),
       JSON.stringify(metadata, null, 2) + "\n",

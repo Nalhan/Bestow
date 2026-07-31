@@ -526,13 +526,25 @@ Attack Power, Spell Power, Armor, MP5, resource-cost reduction, individual
 resistances, and all-resistance bonuses independently. Runtime scoring consumes
 these fields; it never reparses tooltip prose.
 
-BisBeard weights price ordinary throughput stats. Bestow separately stores
-curated per-spec family/spell bonus points for MP5, resource-cost reduction,
-Armor, resistances, and other utility not represented by those weights.
-Curators consider every itemized component when setting the total adjustment,
-so a family combining MP5 with cost reduction can receive more points than a
-pure MP5 family. Bonus points are explicit, versioned review data and default
-to zero.
+BisBeard weights price ordinary throughput stats and list MP5 as an available
+field without recommending a default value. Bestow exposes MP5 as a
+player-configurable, zero-default supplemental weight. It separately stores
+curated per-spec family/spell bonus points for resource-cost reduction, Armor,
+resistances, nonlinear synergy, and other utility not represented by weights.
+Bonus points are explicit, versioned review data. Unreviewed entries default
+to zero; Stamina families currently use a reviewed stock value of `10`, while
+resource-cost-reduction families use `20`.
+
+MP5 families additionally use a stock value of `10` for all specializations of
+Necromancer, Pyromancer, Cultist, Starcaller, Sun Cleric, Tinkerer, Runemaster,
+Primalist, Venomancer, Chronomancer, Stormbringer, Witch Doctor, and Witch
+Hunter. Devotion of Grace combines both components for a stock value of `30`
+for mana users and `20` for other classes.
+
+Any exact buff rank that also grants Arcane, Fire, Frost, Nature, Shadow, or
+all resistances receives an additional `2` stock bonus points. This component
+is applied from the structured spell effect, so it stacks with Stamina,
+cost-reduction, MP5, or other family adjustments.
 
 Roster member:
 
@@ -617,6 +629,10 @@ provider's modal Greater category.
 - `STATE_END`: atomically installs the completed session revision.
 - `PREF`: revisioned current-spec normalized scores and preference-data version
   advertised by that recipient.
+- `WEIGHTS`: recipient-owned current-spec stat-weight deltas, bundled-source
+  fingerprint, revision, checksum, and explicit reset tombstone.
+- `BONUS`: recipient-owned per-family effective bonus-point delta or reset
+  tombstone for the current specialization.
 - `LEAVE`: optional provider state removal.
 
 ### 8.3 Authority
@@ -627,6 +643,10 @@ provider's modal Greater category.
 - Every provider may always change their own recipient overrides.
 - Each player is authoritative for their own advertised preference scores and
   adjustment overrides.
+- Each player is authoritative for their own advertised stat weights. A
+  recipient's compatible advertisement applies only when scoring that
+  recipient; clients use bundled defaults for non-addon players and
+  incompatible or missing advertisements.
 - Changes are immediately authoritative; there is no assignment lock or
   accept/decline handshake.
 - A player whose assignment is changed remotely receives a clear, non-spammy

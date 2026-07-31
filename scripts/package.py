@@ -24,21 +24,24 @@ RUNTIME_FILES = (
     "Assignments.lua",
     "Comms.lua",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
 )
 
 
-def replace_version(toc: Path, version: str) -> None:
-    text = toc.read_text(encoding="utf-8")
+def replace_version(path: Path, pattern: str, replacement: str) -> None:
+    text = path.read_text(encoding="utf-8")
     updated, count = re.subn(
-        r"^## Version:.*$", f"## Version: {version}", text, count=1, flags=re.MULTILINE
+        pattern, replacement, text, count=1, flags=re.MULTILINE
     )
     if count != 1:
-        raise RuntimeError("Bestow.toc has no unique Version metadata line")
-    toc.write_text(updated, encoding="utf-8", newline="\n")
+        raise RuntimeError(f"{path.name} has no unique version declaration")
+    path.write_text(updated, encoding="utf-8", newline="\n")
 
 
 def build(version: str) -> tuple[Path, Path]:
+    if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z._-]*", version):
+        raise ValueError(f"Invalid release version: {version!r}")
     output = ROOT / "dist"
     output.mkdir(exist_ok=True)
     archive = output / f"{ADDON_NAME}-{version}.zip"
@@ -53,7 +56,16 @@ def build(version: str) -> tuple[Path, Path]:
         for name in RUNTIME_DIRS:
             shutil.copytree(ROOT / name, staged / name)
 
-        replace_version(staged / "Bestow.toc", version)
+        replace_version(
+            staged / "Bestow.toc",
+            r"^## Version:.*$",
+            f"## Version: {version}",
+        )
+        replace_version(
+            staged / "Core.lua",
+            r'^CBC\.version\s*=\s*"[^"]*"$',
+            f'CBC.version = "{version}"',
+        )
 
         with zipfile.ZipFile(
             archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9

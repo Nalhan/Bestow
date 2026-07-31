@@ -37,7 +37,7 @@ CBC.Categories = {
       foulMandate=Family("NECROMANCER",{"Foul Mandate"},{"Greater Foul Mandate"},{800199,573295,573296,573297,573298},{680286}),
       riteOfResolve=Family("REAPER",{"Rite of Resolve"},{"Greater Rite of Resolve"},{800198,803310,803311,803312,803313,803314},{680298}),
       markOfRivendare=Family("FLESHWARDEN",{"Mark of Rivendare"},{"Greater Mark of Rivendare"},{803667,803668,803669,803670},{803730}),
-      sanguinaryOffering=Family("SONOFARUGAL",{"Sanguinary Offering"},{"Greater Sanguinary Offering"},{706630,707336,707337,707338,707339,707340},{680299}),
+      sanguinaryOffering=Family("SONOFARUGAL",{"Sanguinary Offering"},{"Greater Sanguinary Offering"},{706630,707336,707337,707338,707339},{680299}),
     },
   },
   agility = {
@@ -47,8 +47,8 @@ CBC.Categories = {
       brutalShout=Family("BARBARIAN",nil,{"Brutal Shout"},nil,{300857,300882,300883,300884,300885,300886,300887},{groupOnly=true}),
       illidariIntuition=Family("DEMONHUNTER",{"Illidari Intuition"},{"Greater Illidari Intuition"},{800212,501326,501327,501328,501329},{680308}),
       etchingOfTheDextrous=Family("SPIRITMAGE",{"Etching of the Dextrous"},{"Greater Etching of the Dextrous"},{561237,561238,561239,561240},{561241}),
-      giftOfZeal=Family("MONK",{"Gift of Zeal"},{"Greater Gift of Zeal"},{706634,300916,300917,300918,300919,300923,300924},{680306}),
-      inquisitorsEdict=Family("WITCHHUNTER",{"Inquisitor's Edict"},{"Greater Inquisitor's Edict"},{706741,707351,707352,707353,707354,707355,707683,707678,707679,707680,707681,707682},{680303}),
+      giftOfZeal=Family("MONK",{"Gift of Zeal"},{"Greater Gift of Zeal"},{706634,300916,300917,300918,300919,300923},{680306}),
+      inquisitorsEdict=Family("WITCHHUNTER",{"Inquisitor's Edict"},{"Greater Inquisitor's Edict"},{706741,707351,707352,707353,707354,707355,707683,707679,707680,707681,707682},{680303}),
       spiderPheromones=Family("PROPHET",{"Spider Pheromones"},{"Greater Spider Pheromones"},{803177,803306,803307,803308,803309,803650},{680312}),
     },
   },
@@ -64,24 +64,22 @@ CBC.Categories = {
   },
   spirit = {
     label="Spirit", short="Spirit",
-    priority={{"CHRONOMANCER","SONOFARUGAL"},{"WITCHDOCTOR"},{"PROPHET"}},
+    priority={{"CHRONOMANCER","SONOFARUGAL"},{"WITCHDOCTOR"}},
     variants={
-      chromiesWisdom=Family("CHRONOMANCER",{"Chromie's Wisdom"},{"Greater Chromie's Wisdom"},{801523,802827,802828,802829,802830,802831,802832,802833,802834},{680307}),
-      spiritWuju=Family("WITCHDOCTOR",{"Spirit Wuju"},{"Greater Spirit Wuju"},{560294,561140,561141,561142,561143},{680872}),
-      toxicPheromones=Family("PROPHET",{"Toxic Pheromones"},{"Greater Toxic Pheromones"},{707689,707690,707691,707692},{712459},{sharedAuraKey="toxicPheromones"}),
+      chromiesWisdom=Family("CHRONOMANCER",{"Chromie's Wisdom"},{"Greater Chromie's Wisdom"},{801523,802827,802828,802829},{680307}),
+      spiritWuju=Family("WITCHDOCTOR",{"Spirit Wuju"},{"Greater Spirit Wuju"},{560294,561140,561141,561142},{680872}),
       bloodsoakedOffering=Family("SONOFARUGAL",{"Bloodsoaked Offering"},{"Greater Bloodsoaked Offering"},{572400,572401,572402,572403},{572404}),
     },
   },
   attackPower = {
     label="Attack Power", short="AP",
-    priority={{"WILDWALKER","RANGER","SUNCLERIC","TINKER","WITCHDOCTOR"},{"PROPHET"}},
+    priority={{"WILDWALKER","RANGER","SUNCLERIC","TINKER","WITCHDOCTOR"}},
     variants={
       primalInstinct=Family("WILDWALKER",{"Primal Instinct"},{"Greater Primal Instinct"},{800197,803315,803316,803317,803318,803319,573349},{680310}),
       woodsmansAdaptation=Family("RANGER",{"Woodsman's Adaptation"},{"Greater Woodsman's Adaptation"},{800266,803320,803321,803322,803323,803324,803666},{680294}),
       devotionOfDawn=Family("SUNCLERIC",{"Devotion of Dawn"},{"Greater Devotion of Dawn"},{572384,572385,572386,572387,572388,572389},{572390}),
       powerModule=Family("TINKER",{"Power Module"},{"Greater Power Module"},{706742,707346,707347,707348,707349,707350,707688},{680315}),
-      powerWuju=Family("WITCHDOCTOR",{"Power Wuju"},{"Greater Power Wuju"},{707671,707672,707673,707674,707675,707676,707677},{712458}),
-      beetlePheromones=Family("PROPHET",{"Beetle Pheromones"},{"Greater Beetle Pheromones"},{803651,803652,803653,803654,803655,803656},{803657},{sharedAuraKey="beetlePheromones"}),
+      powerWuju=Family("WITCHDOCTOR",{"Power Wuju"},{"Greater Power Wuju"},{707671,707672,707673,707674,707675,707676},{712458}),
     },
   },
   spellPower = {
@@ -90,14 +88,14 @@ CBC.Categories = {
     variants={
       whispersOfCthun=Family("CULTIST",{"Whispers of C'thun"},{"Greater Whispers of C'thun"},{572791,572819,572905},{573067}),
       grimMandate=Family("NECROMANCER",{"Grim Mandate"},{"Greater Grim Mandate"},{572787,572788,572789},{572790}),
-      devotionOfRadiance=Family("SUNCLERIC",{"Devotion of Radiance"},{"Greater Devotion of Radiance"},{575040,575041,575042,575043,575044},{575045}),
+      devotionOfRadiance=Family("SUNCLERIC",{"Devotion of Radiance"},{"Greater Devotion of Radiance"},{575040,575041,575042,575043},{575045}),
       witchingEdict=Family("WITCHHUNTER",{"Witching Edict"},{"Greater Witching Edict"},{707684,707685,707686,707687},{681442}),
       toxicPheromones=Family("PROPHET",{"Toxic Pheromones"},{"Greater Toxic Pheromones"},{707689,707690,707691,707692},{712459},{sharedAuraKey="toxicPheromones"}),
       markOfBlaumeux=Family("FLESHWARDEN",{"Mark of Blaumeux"},{"Greater Mark of Blaumeux"},{707693,707694,707695,707696},{712460}),
     },
   },
   percentStats = {
-    label="All Stats", short="All",
+    label="Percent Stats", short="%Stats",
     priority={{"CULTIST"},{"SUNCLERIC"},{"MONK","SPIRITMAGE"}},
     variants={
       whispersOfNzoth=Family("CULTIST",{"Whispers of N'Zoth","Whispers of N'zoth"},{"Greater Whispers of N'Zoth","Greater Whispers of N'zoth"},{561386},{561387}),
@@ -112,11 +110,11 @@ CBC.Categories = {
     priority={{"SUNCLERIC"},{"CULTIST","WILDWALKER","PYROMANCER","STORMBRINGER","TINKER"}},
     variants={
       devotionOfGrace=Family("SUNCLERIC",{"Devotion of Grace"},{"Greater Devotion of Grace"},{800852,300858,300859,300862,300863,300864,300865},{681160},{sharedCastKey="devotionOfGrace"}),
-      whispersOfYshaarj=Family("CULTIST",{"Whispers of Y'shaarj"},{"Greater Whispers of Y'shaarj"},{561389,561390,561391},{561392}),
-      groveInstinct=Family("WILDWALKER",{"Grove Instinct"},{"Greater Grove Instinct"},{572810,572811,572812,572813,572814,572815,572816},{572817}),
+      whispersOfYshaarj=Family("CULTIST",{"Whispers of Y'shaarj"},{"Greater Whispers of Y'shaarj"},{561389,561390},{561392}),
+      groveInstinct=Family("WILDWALKER",{"Grove Instinct"},{"Greater Grove Instinct"},{572810,572811,572812,572813,572814,572815},{572817}),
       sealOfAlar=Family("PYROMANCER",{"Seal of Al'ar"},{"Greater Seal of Al'ar"},{803649,803729,807704,807770,808012},{808060}),
       callOfTheWind=Family("STORMBRINGER",{"Call of the Wind"},{"Greater Call of the Wind"},{804018,503319,503320,503321,503322,503323},{680291}),
-      manaModule=Family("TINKER",{"Mana Module"},{"Greater Mana Module"},{803658,803659,803660,803661,803662,803663,803664},{803665}),
+      manaModule=Family("TINKER",{"Mana Module"},{"Greater Mana Module"},{803658,803659,803660,803661,803662,803663},{803665}),
     },
   },
   costReduction = {
@@ -130,10 +128,10 @@ CBC.Categories = {
     },
   },
   armorStats = {
-    label="Stats + Armor", short="Stats+",
+    label="Stats + Armor", short="+Stats",
     priority={{"DEMONHUNTER","WILDWALKER","RANGER","PROPHET","WITCHHUNTER"}},
     variants={
-      manariIntuition=Family("DEMONHUNTER",{"Man'ari Intuition"},{"Greater Man'ari Intuition"},{523478,523479,523480,523481,523482,523483,523484},{523495}),
+      manariIntuition=Family("DEMONHUNTER",{"Man'ari Intuition"},{"Greater Man'ari Intuition"},{523478,523479,523480,523481,523482,523483},{523495}),
       earthenEndurance=Family("WILDWALKER",{"Earthen Endurance"},{"Greater Earthen Endurance"},{570752,570753,570754,570755},{570756},{independent=true}),
       footpadsAdaptation=Family("RANGER",{"Footpad's Adaptation"},{"Greater Footpad's Adaptation"},{523489,523490,523491,523492,523493,523494},{523513}),
       beetlePheromones=Family("PROPHET",{"Beetle Pheromones"},{"Greater Beetle Pheromones"},{803651,803652,803653,803654,803655,803656},{803657},{sharedAuraKey="beetlePheromones"}),
@@ -147,6 +145,9 @@ function CBC:BuildCatalogIndexes()
   self.auraNameIndex = {}
   self.auraIDIndex = {}
   self.catalogIssues = {}
+  self.BonusFamilyOrder = {}
+  self.BonusFamilyIndex = {}
+  local seenBonusFamilies = {}
   for categoryIndex, categoryKey in ipairs(self.CategoryOrder) do
     local category = self.Categories[categoryKey]
     category.key, category.order = categoryKey, categoryIndex
@@ -154,9 +155,18 @@ function CBC:BuildCatalogIndexes()
     for tier, providers in ipairs(category.priority or {}) do
       for _, provider in ipairs(providers) do category.tierByProvider[provider] = tier end
     end
-    for familyKey, family in pairs(category.variants) do
+    local familyKeys = {}
+    for familyKey in pairs(category.variants) do familyKeys[#familyKeys+1] = familyKey end
+    table.sort(familyKeys)
+    for _, familyKey in ipairs(familyKeys) do
+      local family = category.variants[familyKey]
       family.key, family.category = familyKey, categoryKey
       family.tier = family.provider and category.tierByProvider[family.provider] or 999
+      if not seenBonusFamilies[familyKey] then
+        seenBonusFamilies[familyKey] = true
+        self.BonusFamilyOrder[#self.BonusFamilyOrder+1] = familyKey
+        self.BonusFamilyIndex[familyKey] = #self.BonusFamilyOrder
+      end
       if family.enabled and family.provider and self.Classes[family.provider] then
         self.familyByProviderCategory[family.provider] = self.familyByProviderCategory[family.provider] or {}
         self.familyByProviderCategory[family.provider][categoryKey] = family

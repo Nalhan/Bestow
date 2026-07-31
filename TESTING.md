@@ -50,6 +50,44 @@ For example:
 /bestow pref spellPower essential
 ```
 
+## Stat-weight synchronization
+
+1. Join the same party with two Bestow clients using the same stat-weight source.
+2. Edit one current-spec weight on client A.
+3. Open diagnostics on client B and confirm A reports
+   `weights=advertised` with a revision and checksum.
+4. Confirm client B's valuation and automatic assignments for A change, while
+   another player with the same specialization continues using their own
+   advertisement or the bundled profile.
+5. Reset the edited row or use Reset All and confirm the revision changes and
+   client B returns to the bundled value.
+6. Temporarily test clients with different stat-weight source hashes and
+   confirm diagnostics reports `weights=source-mismatch`; the receiver must
+   ignore incompatible deltas.
+7. Set the `mp5` field above zero and confirm MP5 effects gain
+   raw utility in diagnostics. Reset it to zero and confirm pure-MP5 effects
+   return to the legacy preference fallback when they have no curated bonus.
+8. Open the `Buff Scores` view, navigate through all categories, and confirm
+   each available single/Greater form shows `base+bonus=final`. Hover each
+   family row and confirm it shows the spell tooltip for the highest known
+   Greater rank, falling back to the highest Single rank when no Greater form
+   exists.
+9. Confirm Stamina families initially show a stock bonus of `10` and Cost
+   Reduction families show `20`. Edit one bonus on client A and verify client B
+   uses the advertised value only when scoring A; reset it and confirm both
+   clients return to the appropriate stock value.
+10. On every specialization belonging to Necromancer, Pyromancer, Cultist,
+    Starcaller, Sun Cleric, Tinkerer, Runemaster, Primalist, Venomancer,
+    Chronomancer, Stormbringer, Witch Doctor, or Witch Hunter, browse to Mana
+    Regeneration and verify pure-MP5 families show a stock bonus of `10`.
+    Verify the same rows show `0` on a class outside that list. Devotion of
+    Grace combines its MP5 and Cost Reduction components, producing `30` for
+    mana users and `20` for other classes.
+11. Confirm every rank carrying Arcane, Fire, Frost, Nature, Shadow, or all
+    resistances receives `+2` additional stock bonus points. In particular,
+    Mark of Rivendare should show `12` and Mark of Zeliek should show `22`;
+    resistance families without another stock adjustment should show `2`.
+
 ## Isolation
 
 Runtime errors intentionally propagate to the normal client error handler so

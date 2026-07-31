@@ -6,6 +6,18 @@ CBC.ScoringReferenceStats = {
   strength=100, agility=100, stamina=100, intellect=100, spirit=100,
 }
 
+CBC.StatWeightKeys = {
+  "strength", "agility", "stamina", "intellect", "spirit",
+  "attackPower", "rangedAttackPower", "spellPower", "spellDamage", "healingPower",
+  "armor", "defense", "dodge", "parry", "block", "blockValue", "shieldBlockValue",
+  "critRating", "hitRating", "hasteRating", "expertise",
+  "armorPenetration", "spellPenetration", "weaponDps", "rangedDps",
+  "mp5",
+}
+CBC.SupplementalStatWeightDefaults = {mp5=0}
+CBC.StatWeightScale = 10000
+CBC.StatWeightMaximum = 100000
+
 local primaryStats = {
   {"strength", 1}, {"agility", 2}, {"stamina", 3},
   {"intellect", 4}, {"spirit", 5},
@@ -23,22 +35,65 @@ local function Weight(weights, ...)
   return result
 end
 
-function CBC:GetSpecStatWeights(specID)
+function CBC:GetConfigurableStatWeightDefaults(specID)
   local profile = self.StatWeightsBySpecID and self.StatWeightsBySpecID[tonumber(specID)]
   if not profile then return nil end
+  self.configurableStatWeightDefaultCache = self.configurableStatWeightDefaultCache or {}
+  local cached = self.configurableStatWeightDefaultCache[tonumber(specID)]
+  if not cached then
+    cached = {}
+    for key, value in pairs(profile.weights) do cached[key] = value end
+    for key, value in pairs(self.SupplementalStatWeightDefaults or {}) do
+      if cached[key] == nil then cached[key] = value end
+    end
+    self.configurableStatWeightDefaultCache[tonumber(specID)] = cached
+  end
+  return cached, profile
+end
+
+function CBC:GetSpecStatWeights(specID)
+  local defaults, profile = self:GetConfigurableStatWeightDefaults(specID)
+  if not defaults then return nil end
   local overrides = self.db and self.db.statWeightOverrides and self.db.statWeightOverrides[tonumber(specID)]
-  if not overrides or not next(overrides) then return profile.weights, profile end
+  if not overrides or not next(overrides) then return defaults, profile end
   self.configuredStatWeightCache = self.configuredStatWeightCache or {}
   local cached = self.configuredStatWeightCache[tonumber(specID)]
   if not cached then
     cached = {}
-    for key, value in pairs(profile.weights) do cached[key] = value end
+    for key, value in pairs(defaults) do cached[key] = value end
     for key, value in pairs(overrides) do
-      if profile.weights[key] ~= nil then cached[key] = value end
+      value = tonumber(value)
+      if defaults[key] ~= nil and value and value >= 0
+        and value <= self.StatWeightMaximum and value == value
+      then
+        cached[key] = Round(value * self.StatWeightScale) / self.StatWeightScale
+      end
     end
     self.configuredStatWeightCache[tonumber(specID)] = cached
   end
   return cached, profile
+end
+
+function CBC:GetRecipientStatWeights(specID, unit)
+  specID = tonumber(specID)
+  local defaults, profile = self:GetConfigurableStatWeightDefaults(specID)
+  if not defaults then return nil end
+  local guid = unit and UnitGUID and UnitGUID(unit)
+  if guid and guid == UnitGUID("player") then
+    local weights = self:GetSpecStatWeights(specID)
+    return weights, profile, "local:" .. tostring(specID)
+  end
+  local provider = guid and self.providers and self.providers[guid]
+  if provider and provider.statWeightsAdvertised
+    and provider.statWeightSpecID == specID
+    and provider.statWeightSourceCompatible
+    and provider.effectiveStatWeights
+  then
+    return provider.effectiveStatWeights, profile,
+      table.concat({"remote", guid, provider.statWeightRevision or 0, provider.statWeightHash or "-"}, ":")
+  end
+  local sourceHash = self.StatWeightSource and self.StatWeightSource.sha256 or "-"
+  return defaults, profile, "bundled:" .. tostring(specID) .. ":" .. sourceHash
 end
 
 function CBC:GetBisBeardStatWeights(specID)
@@ -54,10 +109,13 @@ end
 
 function CBC:SetStatWeightOverride(specID, key, value)
   specID, value = tonumber(specID), tonumber(value)
-  local defaults = self:GetBisBeardStatWeights(specID)
-  if not defaults or defaults[key] == nil or not value or value < 0 or value == math.huge or value ~= value then
+  local defaults = self:GetConfigurableStatWeightDefaults(specID)
+  if not defaults or defaults[key] == nil or not value or value < 0
+    or value > self.StatWeightMaximum or value == math.huge or value ~= value
+  then
     return false
   end
+  value = Round(value * self.StatWeightScale) / self.StatWeightScale
   self.db.statWeightOverrides[specID] = self.db.statWeightOverrides[specID] or {}
   if math.abs(value - defaults[key]) < 0.0000001 then
     self.db.statWeightOverrides[specID][key] = nil
@@ -69,6 +127,8 @@ function CBC:SetStatWeightOverride(specID, key, value)
   end
   self:InvalidateStatWeightScores(specID)
   self:Rebuild("stat weight override")
+  self.statWeightRevision = (tonumber(self.statWeightRevision) or 0) + 1
+  if self.SendStatWeights then self:SendStatWeights() end
   return true
 end
 
@@ -84,6 +144,8 @@ function CBC:ResetStatWeightOverrides(specID, key)
   end
   self:InvalidateStatWeightScores(specID)
   self:Rebuild("reset stat weights")
+  self.statWeightRevision = (tonumber(self.statWeightRevision) or 0) + 1
+  if self.SendStatWeights then self:SendStatWeights() end
   return true
 end
 
@@ -116,6 +178,7 @@ local function CalculateRaw(weights, effect, stats)
   raw = raw + (tonumber(effect.spellPower) or 0) *
     Weight(weights, "spellPower", "spellDamage", "healingPower")
   raw = raw + (tonumber(effect.armor) or 0) * (tonumber(weights.armor) or 0)
+  raw = raw + (tonumber(effect.manaPer5) or 0) * (tonumber(weights.mp5) or 0)
 
   local allStatsFlat = tonumber(effect.allStatsFlat) or 0
   local allStatsPercent = tonumber(effect.allStatsPercent) or 0
@@ -130,7 +193,7 @@ local function CalculateRaw(weights, effect, stats)
 end
 
 function CBC:GetRawEffectUtility(specID, effect, unit)
-  local weights = self:GetSpecStatWeights(specID)
+  local weights = self:GetRecipientStatWeights(specID, unit)
   if not weights or not effect then return nil end
   local stats, exact = self:GetScoringStats(unit)
   local raw = CalculateRaw(weights, effect, stats)
@@ -138,11 +201,11 @@ function CBC:GetRawEffectUtility(specID, effect, unit)
 end
 
 function CBC:GetMaxRawEffectUtility(specID, unit)
-  local weights = self:GetSpecStatWeights(specID)
+  local weights, _, weightSignature = self:GetRecipientStatWeights(specID, unit)
   if not weights then return 0, false end
   local stats, exact = self:GetScoringStats(unit)
   local signature = table.concat({
-    tostring(specID), stats.strength, stats.agility, stats.stamina,
+    weightSignature or tostring(specID), stats.strength, stats.agility, stats.stamina,
     stats.intellect, stats.spirit,
   }, ":")
   self.maxRawEffectCache = self.maxRawEffectCache or {}
@@ -162,7 +225,7 @@ function CBC:GetNormalizedEffectScore(specID, effect, unit, familyKey, spellID)
   if raw == nil then return nil end
   local highest = self:GetMaxRawEffectUtility(specID, unit)
   local baseScore = highest > 0 and Round(100 * raw / highest) or 0
-  local bonusPoints = self:GetEffectBonusPoints(specID, familyKey, spellID)
+  local bonusPoints = self:GetEffectBonusPoints(specID, familyKey, spellID, unit)
   local score = min(100, max(0, baseScore + bonusPoints))
   return score, baseScore, raw, bonusPoints, exact
 end

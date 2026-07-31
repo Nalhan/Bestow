@@ -4,8 +4,8 @@ _G.CoABuffCoordinator = CBC
 _G.Bestow = CBC
 
 CBC.name = addonName or "Bestow"
-CBC.version = "0.2.1-alpha"
-CBC.protocol = 5
+CBC.version = "0.3.0-alpha"
+CBC.protocol = 6
 CBC.prefix = "BESTOW1"
 CBC.modules = {}
 CBC.events = {}
@@ -32,12 +32,15 @@ local defaults = {
   revealMissing = true,
   revealExpiring = true,
   showSpecs = true,
+  scale = 1.0,
+  widthPx = 252,
   position = {"CENTER", 0, -180},
   assignmentPosition = {"CENTER", 0, 0},
   font = "Friz Quadrata TT",
   session = nil,
   preferences = {},
   statWeightOverrides = {},
+  bonusPointOverrides = {},
   individualAssignmentThreshold = 25,
 }
 
@@ -144,6 +147,8 @@ function CBC:Initialize()
   self:BuildPreferenceDefaults()
   self:RegisterExternalSpecResolver()
   self:CreateUI()
+  if self.RegisterSharedMediaCallbacks then self:RegisterSharedMediaCallbacks() end
+  if self.RefreshFonts then self:RefreshFonts() end
   if RegisterAddonMessagePrefix then RegisterAddonMessagePrefix(self.prefix) end
   self:ScanSpellbook()
   self:Rebuild("initialize")
@@ -173,6 +178,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     return
   end
   if not CBC.db then return end
+  if event == "PLAYER_ENTERING_WORLD" then
+    if CBC.RegisterSharedMediaCallbacks then CBC:RegisterSharedMediaCallbacks() end
+    if CBC.RefreshFonts then CBC:RefreshFonts() end
+  end
   if event == "CHAT_MSG_ADDON" then
     CBC:OnAddonMessage(...)
   elseif event == "INSPECT_CHARACTER_ADVANCEMENT_RESULT" then
@@ -192,7 +201,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
     if CBC.PixelRelayout then CBC:PixelRelayout() end
   else
     if event == "PLAYER_TALENT_UPDATE" or event == "ACTIVE_TALENT_GROUP_CHANGED" then
-      if CBC.BroadcastState then CBC:BroadcastState() end
+      CBC.broadcastAt = GetTime() + 0.25
       if CBC.statWeightOptionsPanel and CBC.statWeightOptionsPanel:IsShown() then
         CBC:RefreshStatWeightOptions()
       end

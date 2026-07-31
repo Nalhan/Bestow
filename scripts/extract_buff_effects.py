@@ -232,6 +232,32 @@ def parse_tooltip_tsv(path: Path) -> dict[int, dict[str, str]]:
     return entries
 
 
+def parse_curated_csv(path: Path) -> dict[int, dict[str, str]]:
+    entries: dict[int, dict[str, str]] = {}
+    if not path.is_file():
+        return entries
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        for row in csv.DictReader(handle):
+            raw_id = row.get("spell_id", "")
+            if not raw_id.isdigit():
+                continue
+            spell_id = int(raw_id)
+            entry = {
+                "spellID": raw_id,
+                "name": row.get("resolved_name", ""),
+                "rank": row.get("resolved_rank", ""),
+                "tooltipStr": row.get("tooltip", ""),
+                "isTrainer": "false",
+                "_dumpSource": row.get("dump_source", ""),
+            }
+            previous = entries.get(spell_id)
+            if previous is None or len(entry["tooltipStr"]) > len(
+                previous.get("tooltipStr", "")
+            ):
+                entries[spell_id] = entry
+    return entries
+
+
 def clean_tooltip(value: str) -> str:
     value = re.sub(r"\|c[0-9A-Fa-f]{8}", "", value)
     value = value.replace("|r", "").replace("|n", " ")
@@ -405,7 +431,9 @@ def write_tables(
                     "resolved_name": name,
                     "resolved_rank": rank,
                     "tooltip": tooltip,
-                    "dump_source": dump_source if has_tooltip else "",
+                    "dump_source": (
+                        entry.get("_dumpSource") or dump_source
+                    ) if has_tooltip else "",
                 }
             )
             value_writer.writerow(
@@ -482,6 +510,11 @@ def main() -> None:
         dump_entries = parse_spell_dumper(
             source_path.read_text(encoding="utf-8", errors="replace")
         )
+    # SpellDumper snapshots can be partial. Preserve already curated tooltip
+    # rows for IDs absent from the current snapshot, while letting newly dumped
+    # rows replace their older counterparts.
+    for spell_id, entry in parse_curated_csv(RAW_OUTPUT).items():
+        dump_entries.setdefault(spell_id, entry)
     found, parsed, effects = write_tables(
         catalog_spells, dump_entries, source_path.name
     )

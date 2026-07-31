@@ -14,6 +14,8 @@ overrides, and presents the local caster with a secure one-click action queue.
 - all 70 custom specialization stat-weight profiles;
 - recipient-specific 0-100 buff valuation with curated bonus-point hooks;
 - persistent per-specialization stat-weight editing with BisBeard reset controls;
+- live per-family score previews with editable synchronized bonus points;
+- compact recipient-owned stat-weight synchronization across addon users;
 - highest-known spell-rank discovery;
 - stronger/equivalent aura suppression;
 - automatic party assignments and raid-wide Greater assignments;
@@ -73,7 +75,7 @@ its SHA-256. Bestow never contacts BisBeard from the game client.
 Build a release archive:
 
 ```text
-python scripts/package.py --version 0.2.1-alpha
+python scripts/package.py --version 0.3.0-alpha
 ```
 
 The generated ZIP contains one top-level `Bestow/` directory and is written

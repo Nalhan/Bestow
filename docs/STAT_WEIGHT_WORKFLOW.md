@@ -53,6 +53,10 @@ Refresh procedure:
    - the expected CoA dataset currently contains 70 entries.
 8. Export the selected records to stable Lua/JSON/CSV owned by Bestow.
 
+The current bundle also exports the site's supported-stat list. The importer
+records that list in source metadata and preserves supported optional fields
+such as `mp5` in the review CSV even when all default profiles omit a value.
+
 Bestow automates these steps with:
 
 ```text
@@ -246,29 +250,33 @@ score(s, f) =
 `Data/BonusPoints.lua` owns these adjustments. Every special-effect family
 has an explicit `bonusPoints` field. It may define a common value and numeric
 spec-ID overrides; exact spell-ID entries can override the family value.
-Defaults are zero until reviewed.
+Unreviewed entries default to zero. The reviewed stock adjustment is currently
+`10` for every Stamina family and `20` for every resource-cost-reduction
+family.
 
 Examples of adjustments:
 
 - tanks may receive a Stamina multiplier greater than `1.0`;
 - non-tanks may receive a smaller Stamina bonus so survivability is useful
   without outranking primary throughput;
-- MP5, resource-cost reduction, Armor, and resistance components receive
-  explicit curated per-spec utility weights because ordinary item stat weights
-  do not price them;
+- MP5 receives a player-configured linear weight because BisBeard exposes the
+  field without a recommended default;
+- resource-cost reduction, Armor, and resistance components may receive
+  explicit curated per-spec utility adjustments when ordinary item stat
+  weights do not price them;
 - resistance or secondary utility may use a documented bonus when no
   compatible BisBeard weight exists.
 
 Adjustments are data, keyed by spec ID and family/spell. They must never be hidden
 inside solver code.
 
-Special components are itemized independently in `Data/Effects.lua`. Curated
-bonus points should reflect all of them: for example, Devotion of Grace's
-family adjustment should include both its MP5 and resource-cost-reduction
-value, allowing it to outrank a pure MP5 family for a spec that values cost
-reduction. A versioned per-spec/family synergy bonus may be added only when
-testing shows that the combination is materially non-linear. Its default is
-zero, and every non-zero value requires a review note.
+Special components are itemized independently in `Data/Effects.lua`. MP5's
+linear contribution comes from the recipient's configured weight. For example,
+Devotion of Grace combines that MP5 contribution with any separately curated
+resource-cost-reduction adjustment. A versioned per-spec/family synergy bonus
+may be added only when testing shows that the combination is materially
+non-linear. Its default is zero, and every non-zero value requires a review
+note.
 
 ## Conversion to Bestow's 0–100 scale
 
@@ -348,9 +356,19 @@ Percentage All Stats uses the recipient unit's base stats when the client
 exposes them. A documented 100-per-primary-stat reference profile is used when
 unit data is unavailable, and diagnostics marks that result as estimated.
 
-MP5, resource-cost reduction, resistance, and other effects without a
-compatible BisBeard weight remain represented in the effect table and are
-valued through `Data/BonusPoints.lua`. Until a non-zero bonus is curated, the
+MP5 is exposed as a supplemental stat weight because BisBeard lists the
+field but currently omits it from every default CoA profile. Its default is
+zero, and a configured value contributes `manaPer5 * mp5Weight` to raw utility.
+Separately, MP5 buff families receive 10 stock bonus points for every
+specialization of the mana-using classes listed in `Data/BonusPoints.lua`.
+This class bonus is editable per family. A spell with both MP5 and cost
+reduction, such as Devotion of Grace, combines the component adjustments.
+Any spell rank containing a specific resistance or all-resistances effect
+receives another `2` stock bonus points, derived directly from its structured
+effect fields.
+Resource-cost reduction, resistance, and other effects without a compatible
+weight remain represented in the effect table and are valued through
+`Data/BonusPoints.lua`. Until a non-zero weight or bonus is configured, the
 legacy spec preference is retained as a safe assignment fallback.
 
 The in-game Bestow options include a child `Stat Weights` panel for the
@@ -360,3 +378,23 @@ each editable effective value. SavedVariables store only deviations under
 Edited rows are orange and expose both per-row Reset and Reset All controls.
 Changing or resetting a value invalidates normalized-score caches and rebuilds
 assignments immediately.
+
+The same options page includes a `Buff Scores` view. It displays the current
+specialization's single and Greater results as `base + bonus = final` for every
+family in the selected category. Hovering a family displays the spell tooltip
+for its highest known Greater rank, or its highest Single rank when no Greater
+form exists. The editable bonus field is prepopulated from the stock
+family/spell adjustment. SavedVariables store only per-spec,
+per-family deviations under `bonusPointOverrides[specID]`; matching or
+resetting to stock removes the override. Bonus deltas and reset tombstones are
+advertised with the recipient's group state.
+
+In a group, each Bestow user advertises only the overrides for their current
+specialization. The compact `W` message contains the specialization ID, the
+first eight hexadecimal characters of the bundled-source SHA-256, a local
+revision, an Adler-32 checksum, a fixed-order stat bitmask, and four-decimal
+scaled base-36 override values. A zero mask is an explicit reset tombstone. Receivers
+apply valid overrides only when scoring buffs for the sending player; they do
+not apply one player's settings to other characters with the same
+specialization. Missing or incompatible advertisements fall back to the local
+bundled BisBeard profile.

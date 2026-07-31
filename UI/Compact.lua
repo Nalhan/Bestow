@@ -5,6 +5,7 @@ local ROW_HEIGHT, WIDTH = 30, 252
 local function SetTopAnchoredHeight(frame, height)
   if frame.cbcTopAnchored or frame.cbcDragging then
     frame:SetHeight(height)
+    CBC.Pixel:UpdateBackdrop(frame)
     return
   end
   local left, top = frame:GetLeft(), frame:GetTop()
@@ -16,6 +17,7 @@ local function SetTopAnchoredHeight(frame, height)
     CBC.db.position = {"TOPLEFT", "BOTTOMLEFT", left, top}
     frame.cbcTopAnchored = true
   end
+  CBC.Pixel:UpdateBackdrop(frame)
 end
 
 local function ConfigureSecureAction(button, action)
@@ -87,6 +89,148 @@ local function UnlockSecureHover(owner)
   if CBC.compactSecureHover == owner then CBC.compactSecureHover = nil end
 end
 
+function CBC:GetCompactScale()
+  local scale = tonumber(self.db and self.db.scale) or 1.0
+  return math.max(0.50, math.min(1.50, scale))
+end
+
+function CBC:GetCompactWidth()
+  local width = tonumber(self.db and self.db.widthPx) or 252
+  return math.max(180, math.min(400, width))
+end
+
+function CBC:UpdateCompactLayout()
+  local frame = self.compactFrame
+  if not frame then return end
+  local S = self:GetCompactScale()
+  local width = self:GetCompactWidth()
+  local rowHeight = math.floor(30 * S + 0.5)
+  local smartHeight = math.floor(32 * S + 0.5)
+  local mainHeaderHeight = math.floor(20 * S + 0.5)
+  local btnW = math.floor(20 * S + 0.5)
+  local btnH = math.floor(18 * S + 0.5)
+  local smartIconSize = math.floor(24 * S + 0.5)
+  local rowIconSize = math.floor(22 * S + 0.5)
+
+  frame:SetScale(1.0)
+  frame:SetWidth(width)
+
+  if frame.title then
+    frame.title:SetHeight(btnH)
+    frame.title:ClearAllPoints()
+    frame.title:SetPoint("TOPLEFT", 7, -3)
+    frame.title:SetPoint("TOPRIGHT", -(5 + 3 * (btnW + 3) + 4), -3)
+    self:ApplyFont(frame.title, math.floor(11 * S + 0.5), "")
+  end
+
+  if frame.configButton then
+    frame.configButton:SetWidth(btnW); frame.configButton:SetHeight(btnH)
+    frame.configButton:ClearAllPoints()
+    frame.configButton:SetPoint("TOPRIGHT", -(5 + 2 * (btnW + 3)), -3)
+  end
+  if frame.matrixButton then
+    frame.matrixButton:SetWidth(btnW); frame.matrixButton:SetHeight(btnH)
+    frame.matrixButton:ClearAllPoints()
+    frame.matrixButton:SetPoint("TOPRIGHT", -(5 + (btnW + 3)), -3)
+  end
+  if frame.diagnosticsButton then
+    frame.diagnosticsButton:SetWidth(btnW); frame.diagnosticsButton:SetHeight(btnH)
+    frame.diagnosticsButton:ClearAllPoints()
+    frame.diagnosticsButton:SetPoint("TOPRIGHT", -5, -3)
+  end
+
+  local textWidth = width - 12
+
+  if not frame.groupBuffs then
+    local groupBuffs = CreateFrame("Frame", nil, frame)
+    groupBuffs:EnableMouse(true)
+    groupBuffs.text = groupBuffs:CreateFontString(nil, "OVERLAY")
+    groupBuffs.text:SetPoint("TOPLEFT", groupBuffs, "TOPLEFT", 0, 0)
+    groupBuffs.text:SetJustifyH("LEFT")
+    groupBuffs.text:SetJustifyV("TOP")
+    groupBuffs.text:SetWordWrap(true)
+    if groupBuffs.text.SetNonSpaceWrap then
+      groupBuffs.text:SetNonSpaceWrap(true)
+    end
+    groupBuffs:SetScript("OnEnter", function(owner)
+      CBC.compactHover = true
+      CBC:ShowGroupBuffTooltip(owner)
+    end)
+    groupBuffs:SetScript("OnLeave", function()
+      GameTooltip:Hide()
+      CBC.compactHover = false
+      CBC:ScheduleRebuild("hover leave", 0.25)
+    end)
+    frame.groupBuffs = groupBuffs
+  end
+
+  self:ApplyFont(frame.groupBuffs.text, math.floor(9 * S + 0.5), "")
+  frame.groupBuffs.text:SetWidth(textWidth)
+  frame.groupBuffs.text:SetHeight(0)
+
+  local textHeight = math.ceil(frame.groupBuffs.text:GetStringHeight() or 0)
+  local buffStripHeight = math.max(math.floor(16 * S + 0.5), textHeight)
+
+  frame.groupBuffs:ClearAllPoints()
+  frame.groupBuffs:SetPoint("TOPLEFT", 6, -(mainHeaderHeight + 2))
+  frame.groupBuffs:SetWidth(textWidth)
+  frame.groupBuffs:SetHeight(buffStripHeight)
+  local headerHeight = mainHeaderHeight + buffStripHeight + 4
+
+  if frame.smart then
+    frame.smart:SetHeight(smartHeight)
+    frame.smart:ClearAllPoints()
+    frame.smart:SetPoint("TOPLEFT", 5, -headerHeight)
+    frame.smart:SetPoint("TOPRIGHT", -5, -headerHeight)
+    if frame.smart.iconFrame then
+      frame.smart.iconFrame:SetWidth(smartIconSize); frame.smart.iconFrame:SetHeight(smartIconSize)
+      self.Pixel:UpdateBackdrop(frame.smart.iconFrame)
+    elseif frame.smart.icon then
+      frame.smart.icon:SetWidth(smartIconSize); frame.smart.icon:SetHeight(smartIconSize)
+    end
+    if frame.smart.text then
+      frame.smart.text:ClearAllPoints()
+      frame.smart.text:SetPoint("LEFT", frame.smart.iconFrame or frame.smart.icon, "RIGHT", math.floor(6 * S + 0.5), 0)
+      frame.smart.text:SetPoint("RIGHT", -5, 0)
+      self:ApplyFont(frame.smart.text, math.floor(11 * S + 0.5), "")
+    end
+  end
+
+  if frame.stack then
+    frame.stack:SetWidth(width)
+    frame.stack:ClearAllPoints()
+    frame.stack:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(headerHeight + smartHeight + 2))
+  end
+
+  for i, row in ipairs(frame.rows or {}) do
+    row:SetHeight(rowHeight)
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", 5, -(i - 1) * rowHeight)
+    row:SetPoint("TOPRIGHT", -5, -(i - 1) * rowHeight)
+    if row.iconFrame then
+      row.iconFrame:SetWidth(rowIconSize); row.iconFrame:SetHeight(rowIconSize)
+      self.Pixel:UpdateBackdrop(row.iconFrame)
+    elseif row.icon then
+      row.icon:SetWidth(rowIconSize); row.icon:SetHeight(rowIconSize)
+    end
+    if row.name then
+      row.name:ClearAllPoints()
+      row.name:SetPoint("LEFT", row.iconFrame or row.icon, "RIGHT", math.floor(5 * S + 0.5), math.floor(6 * S + 0.5))
+      self:ApplyFont(row.name, math.floor(10 * S + 0.5), "")
+      row.name:SetHeight(math.floor(14 * S + 0.5))
+    end
+    if row.status then
+      row.status:ClearAllPoints()
+      row.status:SetPoint("LEFT", row.iconFrame or row.icon, "RIGHT", math.floor(5 * S + 0.5), -math.floor(7 * S + 0.5))
+      row.status:SetPoint("RIGHT", -5, -math.floor(7 * S + 0.5))
+      self:ApplyFont(row.status, math.floor(9 * S + 0.5), "")
+    end
+  end
+
+  self.compactRowHeight = rowHeight
+  self.compactHeaderTotalHeight = headerHeight + smartHeight + 2
+end
+
 function CBC:SyncSmartOverlay(action)
   local overlay, smart = self.smartSecureOverlay, self.compactFrame and self.compactFrame.smart
   if not overlay or not smart or (InCombatLockdown and InCombatLockdown()) then return end
@@ -94,6 +238,7 @@ function CBC:SyncSmartOverlay(action)
   overlay._cbcHasAction = action ~= nil
   local left, bottom = smart:GetLeft(), smart:GetBottom()
   if left and bottom then
+    overlay:SetScale(1.0)
     overlay:ClearAllPoints()
     overlay:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
     overlay:SetWidth(smart:GetWidth())
@@ -110,6 +255,7 @@ function CBC:SyncRowOverlay(row, action)
   overlay._cbcHasAction = action ~= nil
   local left, bottom = row:GetLeft(), row:GetBottom()
   if left and bottom then
+    overlay:SetScale(1.0)
     overlay:ClearAllPoints()
     overlay:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
     overlay:SetWidth(row:GetWidth())
@@ -127,6 +273,7 @@ function CBC:SyncCombatGreaterOverlay(action)
   overlay:EnableMouse(action ~= nil)
   local left, bottom = smart:GetLeft(), smart:GetBottom()
   if left and bottom then
+    overlay:SetScale(1.0)
     overlay:ClearAllPoints()
     overlay:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
     overlay:SetWidth(smart:GetWidth())
@@ -143,11 +290,13 @@ function CBC:SyncCombatRowOverlay(row, action)
   overlay:EnableMouse(action ~= nil)
   local left, bottom = row:GetLeft(), row:GetBottom()
   if left and bottom then
+    overlay:SetScale(1.0)
     overlay:ClearAllPoints()
     overlay:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
     overlay:SetWidth(row:GetWidth())
     overlay:SetHeight(row:GetHeight())
     if row.combatBlocker then
+      row.combatBlocker:SetScale(1.0)
       row.combatBlocker:ClearAllPoints()
       row.combatBlocker:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", self.Pixel:Snap(left), self.Pixel:Snap(bottom))
       row.combatBlocker:SetWidth(row:GetWidth())
@@ -197,8 +346,9 @@ local function CycleRowOverride(row, delta)
 end
 
 function CBC:CreateCompact()
+  local width = self:GetCompactWidth()
   local frame = CreateFrame("Frame", "BestowCompact", UIParent)
-  frame:SetWidth(WIDTH); frame:SetHeight(58)
+  frame:SetWidth(width); frame:SetHeight(58)
   -- Clamping a dynamically growing frame makes the client move its top edge
   -- when the expanded rows approach the screen boundary. Keep the header
   -- absolutely stationary and let the recipient stack extend downward.
@@ -210,7 +360,15 @@ function CBC:CreateCompact()
     point, x, y = unpack(self.db.position)
     relativePoint = point
   end
+  if point ~= "TOPLEFT" then
+    if point == "CENTER" then
+      x = x - width / 2
+      y = y + 29
+      point = "TOPLEFT"
+    end
+  end
   frame:SetPoint(point, UIParent, relativePoint, x, y)
+  frame.cbcTopAnchored = true
   frame:SetMovable(true); frame:EnableMouse(true)
   frame:RegisterForDrag("LeftButton")
   frame:SetScript("OnDragStart", function(self)
@@ -230,32 +388,80 @@ function CBC:CreateCompact()
   frame:SetScript("OnLeave", function() CBC.compactHover = false; CBC:ScheduleRebuild("hover leave",0.25) end)
   self.Pixel:Backdrop(frame, 0.78)
   self.compactFrame = frame
-  SetTopAnchoredHeight(frame, 58)
+  frame:SetHeight(58)
 
   local title = frame:CreateFontString(nil, "OVERLAY")
-  title:SetPoint("TOPLEFT", 7, -6); title:SetPoint("TOPRIGHT", -50, -6)
+  title:SetPoint("TOPLEFT", 7, -6); title:SetPoint("TOPRIGHT", -74, -6)
   title:SetHeight(16); title:SetJustifyH("LEFT")
   self:ApplyFont(title, 11, "")
   title:SetText("Bestow")
   frame.title = title
 
+  local config = CreateFrame("Button", nil, frame)
+  config:SetWidth(20); config:SetHeight(18); config:SetPoint("TOPRIGHT",-51,-3)
+  config:SetNormalFontObject(GameFontNormalSmall); config:SetText("C")
+  config:SetScript("OnClick", function() CBC:OpenOptions() end)
+  config:SetScript("OnEnter", function(owner)
+    CBC.compactHover = true; CBC:UpdateCompact()
+    GameTooltip:SetOwner(owner, "ANCHOR_TOP")
+    GameTooltip:SetText("Configuration")
+    GameTooltip:AddLine("Open options panel (/bestow config)", 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  config:SetScript("OnLeave", function()
+    GameTooltip:Hide(); CBC.compactHover = false; CBC:ScheduleRebuild("hover leave",0.25)
+  end)
+  self.Pixel:Button(config,0.45)
+  frame.configButton = config
+
   local matrix = CreateFrame("Button", nil, frame)
   matrix:SetWidth(20); matrix:SetHeight(18); matrix:SetPoint("TOPRIGHT",-28,-3)
   matrix:SetNormalFontObject(GameFontNormalSmall); matrix:SetText("A")
   matrix:SetScript("OnClick", function() CBC:ToggleAssignmentPanel() end)
+  matrix:SetScript("OnEnter", function(owner)
+    CBC.compactHover = true; CBC:UpdateCompact()
+    GameTooltip:SetOwner(owner, "ANCHOR_TOP")
+    GameTooltip:SetText("Assignments")
+    GameTooltip:AddLine("Open assignment matrix (/bestow assignments)", 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  matrix:SetScript("OnLeave", function()
+    GameTooltip:Hide(); CBC.compactHover = false; CBC:ScheduleRebuild("hover leave",0.25)
+  end)
   self.Pixel:Button(matrix,0.45)
+  frame.matrixButton = matrix
 
   local diagnostics = CreateFrame("Button", nil, frame)
   diagnostics:SetWidth(20); diagnostics:SetHeight(18); diagnostics:SetPoint("TOPRIGHT",-5,-3)
   diagnostics:SetNormalFontObject(GameFontNormalSmall); diagnostics:SetText("D")
   diagnostics:SetScript("OnClick", function() CBC:ShowDiagnostics() end)
+  diagnostics:SetScript("OnEnter", function(owner)
+    CBC.compactHover = true; CBC:UpdateCompact()
+    GameTooltip:SetOwner(owner, "ANCHOR_TOP")
+    GameTooltip:SetText("Diagnostics")
+    GameTooltip:AddLine("Open diagnostics dump (/bestow dump)", 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  diagnostics:SetScript("OnLeave", function()
+    GameTooltip:Hide(); CBC.compactHover = false; CBC:ScheduleRebuild("hover leave",0.25)
+  end)
   self.Pixel:Button(diagnostics,0.45)
+  frame.diagnosticsButton = diagnostics
 
   local smart = CreateFrame("Button", nil, frame)
   smart:SetHeight(32); smart:SetPoint("TOPLEFT",5,-24); smart:SetPoint("TOPRIGHT",-5,-24)
   self.Pixel:Button(smart,0.64)
-  smart.icon = smart:CreateTexture(nil,"ARTWORK"); smart.icon:SetWidth(24); smart.icon:SetHeight(24); smart.icon:SetPoint("LEFT",4,0)
-  smart.text = smart:CreateFontString(nil,"OVERLAY"); smart.text:SetPoint("LEFT",smart.icon,"RIGHT",6,0); smart.text:SetPoint("RIGHT",-5,0); smart.text:SetJustifyH("LEFT")
+
+  local smartIconFrame = CreateFrame("Frame", nil, smart)
+  smartIconFrame:SetWidth(24); smartIconFrame:SetHeight(24); smartIconFrame:SetPoint("LEFT",4,0)
+  self.Pixel:Backdrop(smartIconFrame, 0)
+  smart.iconFrame = smartIconFrame
+
+  smart.icon = smartIconFrame:CreateTexture(nil, "ARTWORK")
+  smart.icon:SetPoint("TOPLEFT", 1, -1); smart.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+  self.Pixel:CropIcon(smart.icon)
+
+  smart.text = smart:CreateFontString(nil,"OVERLAY"); smart.text:SetPoint("LEFT",smartIconFrame,"RIGHT",6,0); smart.text:SetPoint("RIGHT",-5,0); smart.text:SetJustifyH("LEFT")
   self:ApplyFont(smart.text,11,"")
   local function SmartEnter(owner)
     CBC.compactHover=true; CBC:UpdateCompact(); LockSecureHover(owner)
@@ -319,7 +525,7 @@ function CBC:CreateCompact()
 
   local stack = CreateFrame("Frame", nil, frame)
   stack:SetWidth(WIDTH); stack:SetHeight(1)
-  stack:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, 0)
+  stack:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -56)
   stack:EnableMouse(true)
   stack:SetScript("OnEnter", function() CBC.compactHover = true; CBC:UpdateCompact() end)
   stack:SetScript("OnLeave", function() CBC.compactHover = false; CBC:ScheduleRebuild("hover leave",0.25) end)
@@ -333,10 +539,19 @@ function CBC:CreateCompact()
     self.Pixel:Button(row,0.52)
     row:EnableMouse(true)
     row:EnableMouseWheel(true)
-    row.icon = row:CreateTexture(nil,"ARTWORK"); row.icon:SetWidth(22); row.icon:SetHeight(22); row.icon:SetPoint("LEFT",4,0)
-    row.name = row:CreateFontString(nil,"OVERLAY"); row.name:SetPoint("LEFT",row.icon,"RIGHT",5,6); row.name:SetWidth(148); row.name:SetJustifyH("LEFT")
+
+    local rowIconFrame = CreateFrame("Frame", nil, row)
+    rowIconFrame:SetWidth(22); rowIconFrame:SetHeight(22); rowIconFrame:SetPoint("LEFT",4,0)
+    self.Pixel:Backdrop(rowIconFrame, 0)
+    row.iconFrame = rowIconFrame
+
+    row.icon = rowIconFrame:CreateTexture(nil,"ARTWORK")
+    row.icon:SetPoint("TOPLEFT", 1, -1); row.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+    self.Pixel:CropIcon(row.icon)
+
+    row.name = row:CreateFontString(nil,"OVERLAY"); row.name:SetPoint("LEFT",rowIconFrame,"RIGHT",5,6); row.name:SetWidth(148); row.name:SetJustifyH("LEFT")
     self:ApplyFont(row.name,10,"")
-    row.status = row:CreateFontString(nil,"OVERLAY"); row.status:SetPoint("LEFT",row.icon,"RIGHT",5,-7); row.status:SetPoint("RIGHT",-5,-7); row.status:SetJustifyH("LEFT")
+    row.status = row:CreateFontString(nil,"OVERLAY"); row.status:SetPoint("LEFT",rowIconFrame,"RIGHT",5,-7); row.status:SetPoint("RIGHT",-5,-7); row.status:SetJustifyH("LEFT")
     self:ApplyFont(row.status,9,"")
     row:SetScript("OnMouseWheel", function(self, delta)
       CycleRowOverride(self, delta)
@@ -418,6 +633,30 @@ function CBC:CreateCompact()
     row.combatBlocker = blocker
     frame.rows[i] = row
   end
+  self:UpdateCompactLayout()
+end
+
+function CBC:ShowGroupBuffTooltip(owner)
+  GameTooltip:SetOwner(owner, "ANCHOR_TOP")
+  GameTooltip:SetText("Player Buff Status")
+  local playerGUID = UnitGUID("player")
+  local playerMember = self.rosterByGUID and self.rosterByGUID[playerGUID]
+  local playerClass = playerMember and playerMember.classToken or "PRIEST"
+  for _, category in ipairs(self.CategoryOrder) do
+    local aura = self:GetCoverage(playerGUID, category)
+    local label = self.Categories[category].label
+    if aura then
+      local casterGUID = aura.casterGUID
+      local casterMember = casterGUID and self.rosterByGUID and self.rosterByGUID[casterGUID]
+      local name = casterMember and casterMember.shortName or aura.casterName or aura.name or "Self"
+      local classToken = casterMember and casterMember.classToken or playerClass
+      local hex = self:ClassHex(classToken)
+      GameTooltip:AddLine(label .. " (" .. "|cff" .. hex .. name .. "|r)  |cff66cc88[APPLIED]|r", 1, 1, 1)
+    else
+      GameTooltip:AddLine(label .. "  |cff888888[MISSING]|r", 0.65, 0.65, 0.65)
+    end
+  end
+  GameTooltip:Show()
 end
 
 function CBC:ShowProviderTooltip(owner, recipientGUID, category)
@@ -518,6 +757,7 @@ function CBC:UpdateCompact()
     end
     return
   end
+  self:UpdateCompactLayout()
   local inCombat = InCombatLockdown and InCombatLockdown()
   if inCombat then
     self.compactSecureHover = nil
@@ -548,12 +788,30 @@ function CBC:UpdateCompact()
     frame.smart.icon:SetTexture("Interface\\Icons\\Spell_Holy_GreaterBlessingofKings")
     frame.smart.text:SetText("|cff66cc88All assigned buffs covered|r")
   end
-  local greater = self.assignment.greaterCategoriesByProvider[UnitGUID("player")] or {}
-  local greaterLabels = {}
+  frame.title:SetText("Bestow  |cff888888v" .. (self.version or "0.3.0-alpha") .. "|r")
+
+  local playerGUID = UnitGUID("player")
+  local playerMember = self.rosterByGUID and self.rosterByGUID[playerGUID]
+  local playerClass = playerMember and playerMember.classToken or "PRIEST"
+  local groupIndicators = {}
+
   for _, category in ipairs(self.CategoryOrder) do
-    if greater[category] then greaterLabels[#greaterLabels+1] = self.Categories[category].short end
+    local aura = self:GetCoverage(playerGUID, category)
+    local label = self.Categories[category].short
+    if aura then
+      local casterGUID = aura.casterGUID
+      local casterMember = casterGUID and self.rosterByGUID and self.rosterByGUID[casterGUID]
+      local classToken = casterMember and casterMember.classToken or playerClass
+      local hex = self:ClassHex(classToken)
+      groupIndicators[#groupIndicators + 1] = "|cff" .. hex .. label .. "|r"
+    else
+      groupIndicators[#groupIndicators + 1] = "|cff555555" .. label .. "|r"
+    end
   end
-  frame.title:SetText("Bestow" .. (#greaterLabels > 0 and ("  |cff888888Greater: " .. table.concat(greaterLabels,",") .. "|r") or ""))
+  if frame.groupBuffs and frame.groupBuffs.text then
+    frame.groupBuffs.text:SetText(table.concat(groupIndicators, " "))
+    self:UpdateCompactLayout()
+  end
 
   local views = inCombat and self:BuildPreparedCombatRows() or self:BuildCompactRows()
   if not inCombat then
@@ -571,7 +829,6 @@ function CBC:UpdateCompact()
     for index=#views+1,#frame.rows do self:SyncCombatRowOverlay(frame.rows[index], nil) end
 
     local greaterAction
-    local playerGUID = UnitGUID("player")
     local greaterCategory
     local greaterSet = self.assignment.greaterCategoriesByProvider[playerGUID] or {}
     for _, category in ipairs(self.CategoryOrder) do
@@ -681,12 +938,16 @@ function CBC:UpdateCompact()
     if frame.rows[i].combatBlocker then frame.rows[i].combatBlocker:Hide() end
     frame.rows[i]:Hide()
   end
+  local rowHeight = self.compactRowHeight or 30
+  local headerTotalHeight = self.compactHeaderTotalHeight or 58
   if shown > 0 then
-    frame.stack:SetHeight(shown * ROW_HEIGHT)
+    frame.stack:SetHeight(shown * rowHeight)
     frame.stack:Show()
+    SetTopAnchoredHeight(frame, headerTotalHeight + shown * rowHeight + 4)
   else
     frame.stack:SetHeight(1)
     frame.stack:Hide()
+    SetTopAnchoredHeight(frame, headerTotalHeight)
   end
   frame:Show()
   if not inCombat then self:SyncSmartOverlay(nextAction) end

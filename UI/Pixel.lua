@@ -51,6 +51,11 @@ function CBC.Pixel:Button(button, alpha)
   highlight:SetAllPoints()
 end
 
+function CBC.Pixel:CropIcon(texture)
+  if not texture or not texture.SetTexCoord then return end
+  texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+end
+
 function CBC:CreateCloseButton(parent)
   local close = CreateFrame("Button", nil, parent)
   close:SetWidth(20); close:SetHeight(18); close:SetPoint("TOPRIGHT", -5, -4)
@@ -64,7 +69,8 @@ function CBC:GetFontPath()
   local lsm = LibStub and LibStub("LibSharedMedia-3.0", true)
   if lsm then
     if STANDARD_TEXT_FONT then lsm:Register("font", "Friz Quadrata TT", STANDARD_TEXT_FONT) end
-    return lsm:Fetch("font", self.db and self.db.font or "Friz Quadrata TT", true) or STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+    local requested = self.db and self.db.font or "Friz Quadrata TT"
+    return lsm:Fetch("font", requested, true) or lsm:Fetch("font", "Friz Quadrata TT", true) or STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
   end
   return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 end
@@ -79,7 +85,25 @@ end
 function CBC:RefreshFonts()
   local path = self:GetFontPath()
   for fontString, settings in pairs(self.fontStrings or {}) do
-    fontString:SetFont(path, settings.size, settings.flags)
+    if fontString and fontString.SetFont then
+      fontString:SetFont(path, settings.size, settings.flags)
+    end
+  end
+  if self.optionsPanel and self.optionsPanel.font then
+    UIDropDownMenu_SetSelectedValue(self.optionsPanel.font, self.db and self.db.font)
+    UIDropDownMenu_SetText(self.optionsPanel.font, self.db and self.db.font or "Friz Quadrata TT")
+  end
+end
+
+function CBC:RegisterSharedMediaCallbacks()
+  local lsm = LibStub and LibStub("LibSharedMedia-3.0", true)
+  if lsm and lsm.RegisterCallback and not self.lsmRegistered then
+    self.lsmRegistered = true
+    lsm.RegisterCallback(self, "LibSharedMedia_Registered", function(_, mediatype)
+      if mediatype == "font" then
+        CBC:RefreshFonts()
+      end
+    end)
   end
 end
 

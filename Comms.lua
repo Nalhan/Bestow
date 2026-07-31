@@ -1,8 +1,61 @@
 local _, CBC = ...
 
+local floor = math.floor
+
 local function Channel()
   if (GetNumRaidMembers and GetNumRaidMembers() or 0) > 0 then return "RAID" end
   if (GetNumPartyMembers and GetNumPartyMembers() or 0) > 0 then return "PARTY" end
+end
+
+local function SourceHash(self)
+  local hash = self.StatWeightSource and self.StatWeightSource.sha256
+  return hash and string.sub(hash, 1, 8) or "00000000"
+end
+
+local function Checksum(value)
+  local a, b = 1, 0
+  for index=1,#value do
+    a = (a + string.byte(value, index)) % 65521
+    b = (b + a) % 65521
+  end
+  return string.format("%04x%04x", b, a)
+end
+
+local function EncodeBase36(value)
+  local digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+  value = floor(tonumber(value) or 0)
+  if value == 0 then return "0" end
+  local encoded = ""
+  while value > 0 do
+    local remainder = value % 36
+    encoded = string.sub(digits, remainder + 1, remainder + 1) .. encoded
+    value = floor(value / 36)
+  end
+  return encoded
+end
+
+local function DecodeBase36(value)
+  if not value or value == "" then return nil end
+  local decoded = 0
+  for index=1,#value do
+    local byte = string.byte(value, index)
+    local digit
+    if byte >= 48 and byte <= 57 then digit = byte - 48
+    elseif byte >= 97 and byte <= 122 then digit = byte - 87
+    else return nil end
+    decoded = decoded * 36 + digit
+    if decoded > CBC.StatWeightMaximum * CBC.StatWeightScale then return nil end
+  end
+  return decoded
+end
+
+local function CountMaskBits(mask)
+  local count = 0
+  while mask > 0 do
+    if mask % 2 == 1 then count = count + 1 end
+    mask = floor(mask / 2)
+  end
+  return count
 end
 
 function CBC:Send(message)
@@ -56,12 +109,159 @@ function CBC:DecodeCapabilities(provider, payload)
   end
 end
 
+-- W|specID|sourceHash8|revision|checksum8|statMaskHex|scaledBase36Values
+function CBC:EncodeStatWeights(specID)
+  specID = tonumber(specID)
+  local defaults = self:GetConfigurableStatWeightDefaults(specID)
+  if not defaults then return nil end
+  local overrides = self.db.statWeightOverrides and self.db.statWeightOverrides[specID]
+  local mask, values = 0, {}
+  for index, key in ipairs(self.StatWeightKeys or {}) do
+    local value = tonumber(overrides and overrides[key])
+    if value and value >= 0 and value <= self.StatWeightMaximum
+      and value == value and defaults[key] ~= nil
+    then
+      mask = mask + 2 ^ (index - 1)
+      values[#values+1] = EncodeBase36(value * self.StatWeightScale + 0.5)
+    end
+  end
+  local maskText = string.format("%x", mask)
+  local valuesText = #values > 0 and table.concat(values, ",") or "-"
+  local canonical = table.concat({specID, SourceHash(self), maskText, valuesText}, "|")
+  return maskText, valuesText, Checksum(canonical)
+end
+
+function CBC:SendStatWeights()
+  local specID = self:GetLocalSpec()
+  local mask, values, hash = self:EncodeStatWeights(specID)
+  if not mask then return end
+  local revision = tonumber(self.statWeightRevision) or 0
+  self:Send(table.concat({
+    "W", specID, SourceHash(self), revision, hash, mask, values,
+  }, "|"))
+end
+
+function CBC:SendBonusPointOverride(familyKey)
+  local specID = self:GetLocalSpec()
+  local familyIndex = self.BonusFamilyIndex and self.BonusFamilyIndex[familyKey]
+  if not specID or not familyIndex then return end
+  local overrides = self.db.bonusPointOverrides and self.db.bonusPointOverrides[specID]
+  local value = overrides and overrides[familyKey]
+  local encoded = value ~= nil
+    and tostring(floor(value * self.StatWeightScale + 0.5))
+    or "-"
+  self:Send(table.concat({
+    "B", specID, tonumber(self.bonusPointRevision) or 0, familyIndex, encoded,
+  }, "|"))
+end
+
+function CBC:SendBonusPoints()
+  local specID = self:GetLocalSpec()
+  local overrides = specID and self.db.bonusPointOverrides
+    and self.db.bonusPointOverrides[specID]
+  for _, familyKey in ipairs(self.BonusFamilyOrder or {}) do
+    if overrides and overrides[familyKey] ~= nil then
+      self:SendBonusPointOverride(familyKey)
+    end
+  end
+end
+
+function CBC:DecodeBonusPointOverride(provider, payload)
+  local specText, revisionText, indexText, valueText =
+    string.match(payload or "", "^(%d+)|(%d+)|(%d+)|([^|]+)$")
+  local specID, revision, familyIndex =
+    tonumber(specText), tonumber(revisionText), tonumber(indexText)
+  local familyKey = familyIndex and self.BonusFamilyOrder
+    and self.BonusFamilyOrder[familyIndex]
+  if not specID or provider.specID ~= specID or not revision or not familyKey then return false end
+  if provider.bonusPointRevision and revision < provider.bonusPointRevision then return false end
+  local value
+  if valueText ~= "-" then
+    if not string.match(valueText, "^%-?%d+$") then return false end
+    local scaled = tonumber(valueText)
+    value = scaled and scaled / self.StatWeightScale
+    if not value or value < self.BonusPointMinimum or value > self.BonusPointMaximum then
+      return false
+    end
+  end
+  provider.bonusPointOverrides = provider.bonusPointOverrides or {}
+  provider.bonusPointOverrides[familyKey] = value
+  if not next(provider.bonusPointOverrides) then provider.bonusPointOverrides = nil end
+  provider.bonusPointRevision = revision
+  provider.bonusPointsAdvertised = true
+  return true
+end
+
+function CBC:DecodeStatWeights(provider, payload)
+  local specText, sourceHash, revisionText, hash, maskText, valuesText =
+    string.match(payload or "", "^(%d+)|([0-9a-f]+)|(%d+)|([0-9a-f]+)|([0-9a-f]+)|([^|]+)$")
+  local specID, revision, mask =
+    tonumber(specText), tonumber(revisionText), tonumber(maskText, 16)
+  if not specID or not revision or not mask or not self.specsByID[specID] then return false end
+  if #sourceHash ~= 8 or #hash ~= 8 or provider.specID ~= specID then return false end
+  if provider.statWeightRevision and revision < provider.statWeightRevision then return false end
+  if provider.statWeightRevision == revision and provider.statWeightHash
+    and provider.statWeightHash ~= hash
+  then
+    return false
+  end
+  if mask >= 2 ^ #(self.StatWeightKeys or {}) then return false end
+
+  local valueTokens = {}
+  for token in string.gmatch(valuesText ~= "-" and valuesText or "", "[^,]+") do
+    if not string.match(token, "^[0-9a-z]+$") then return false end
+    valueTokens[#valueTokens+1] = token
+  end
+  if #valueTokens ~= CountMaskBits(mask) then return false end
+  local canonical = table.concat({specID, sourceHash, maskText, valuesText}, "|")
+  if hash ~= Checksum(canonical) then return false end
+  if sourceHash ~= SourceHash(self) then
+    provider.statWeightsAdvertised = true
+    provider.statWeightSpecID = specID
+    provider.statWeightSourceCompatible = false
+    provider.statWeightSourceHash = sourceHash
+    provider.statWeightRevision = revision
+    provider.statWeightHash = hash
+    provider.statWeightOverrides = nil
+    provider.effectiveStatWeights = nil
+    return false
+  end
+
+  local defaults = self:GetConfigurableStatWeightDefaults(specID)
+  if not defaults then return false end
+  local overrides, effective, tokenIndex = {}, {}, 1
+  for key, value in pairs(defaults) do effective[key] = value end
+  for index, key in ipairs(self.StatWeightKeys or {}) do
+    if floor(mask / 2 ^ (index - 1)) % 2 == 1 then
+      local scaled = DecodeBase36(valueTokens[tokenIndex])
+      local value = scaled and scaled / self.StatWeightScale
+      if not value or value < 0 or value > self.StatWeightMaximum or defaults[key] == nil then
+        return false
+      end
+      overrides[key], effective[key] = value, value
+      tokenIndex = tokenIndex + 1
+    end
+  end
+  provider.statWeightsAdvertised = true
+  provider.statWeightSpecID = specID
+  provider.statWeightSourceCompatible = true
+  provider.statWeightSourceHash = sourceHash
+  provider.statWeightRevision = revision
+  provider.statWeightHash = hash
+  provider.statWeightOverrides = next(overrides) and overrides or nil
+  provider.effectiveStatWeights = effective
+  self.maxRawEffectCache = {}
+  return true
+end
+
 function CBC:BroadcastState()
   if not Channel() then return end
   local specID = self:GetLocalSpec()
   self:Send("H|" .. self.protocol .. "|" .. (specID or 0))
   self:Send("C|" .. self:EncodeCapabilities())
   self:SendPreferences()
+  self:SendStatWeights()
+  self:SendBonusPoints()
   local playerGUID = UnitGUID("player")
   local overrides = self.session and self.session.providerOverrides and self.session.providerOverrides[playerGUID]
   for recipientGUID, category in pairs(overrides or {}) do
@@ -139,6 +339,17 @@ function CBC:OnAddonMessage(prefix, message, channel, sender)
     provider.protocolCompatible = provider.protocol == self.protocol
     if provider.protocolCompatible then
       provider.addon, provider.provisional = true, false
+      provider.statWeightsAdvertised = nil
+      provider.statWeightSpecID = nil
+      provider.statWeightSourceCompatible = nil
+      provider.statWeightSourceHash = nil
+      provider.statWeightRevision = nil
+      provider.statWeightHash = nil
+      provider.statWeightOverrides = nil
+      provider.effectiveStatWeights = nil
+      provider.bonusPointOverrides = nil
+      provider.bonusPointRevision = nil
+      provider.bonusPointsAdvertised = nil
       specID = tonumber(specID)
       if self.specsByID[specID] then
         provider.specID, provider.specName = specID, self.specsByID[specID].name
@@ -160,6 +371,12 @@ function CBC:OnAddonMessage(prefix, message, channel, sender)
         if category then provider.preferenceOverrides[category] = tonumber(weight) end
       end
     end
+  elseif kind == "W" then
+    if not provider.protocolCompatible then return end
+    self:DecodeStatWeights(provider, payload)
+  elseif kind == "B" then
+    if not provider.protocolCompatible then return end
+    self:DecodeBonusPointOverride(provider, payload)
   elseif kind == "R" then
     self.broadcastAt = GetTime() + 0.20
   elseif kind == "O" then
