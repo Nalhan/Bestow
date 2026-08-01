@@ -533,7 +533,8 @@ function CBC:CreateCompact()
   frame.stack = stack
 
   frame.rows = {}
-  for i=1,80 do
+  local function CreateRows(firstIndex, lastIndex)
+  for i=firstIndex,lastIndex do
     local row = CreateFrame("Button", nil, stack)
     row:SetHeight(ROW_HEIGHT); row:SetPoint("TOPLEFT",5,-(i-1)*ROW_HEIGHT); row:SetPoint("TOPRIGHT",-5,-(i-1)*ROW_HEIGHT)
     self.Pixel:Button(row,0.52)
@@ -633,7 +634,21 @@ function CBC:CreateCompact()
     row.combatBlocker = blocker
     frame.rows[i] = row
   end
+  end
+  frame.CreateRows = CreateRows
+  CreateRows(1, 1)
   self:UpdateCompactLayout()
+end
+
+function CBC:EnsureCompactRows(count)
+  local frame = self.compactFrame
+  if not frame or not frame.CreateRows then return 0 end
+  local current = #(frame.rows or {})
+  count = math.min(80, math.max(1, tonumber(count) or 1))
+  if count <= current or (InCombatLockdown and InCombatLockdown()) then return current end
+  frame.CreateRows(current + 1, count)
+  self:UpdateCompactLayout()
+  return #(frame.rows or {})
 end
 
 function CBC:ShowGroupBuffTooltip(owner)
@@ -815,6 +830,7 @@ function CBC:UpdateCompact()
 
   local views = inCombat and self:BuildPreparedCombatRows() or self:BuildCompactRows()
   if not inCombat then
+    self:EnsureCompactRows(#views)
     self.combatPreparedRows = {}
     for index, view in ipairs(views) do
       if index > #frame.rows then break end
