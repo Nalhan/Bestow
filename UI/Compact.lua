@@ -722,6 +722,18 @@ function CBC:BuildCompactRows()
     if member and cap then
       local state, aura = self:CoverageState(recipientGUID,category,cap,false)
       local action = actionByTargetCategory[recipientGUID..":"..category]
+      if not action then
+        local id, name, rank, icon = self:GetCastSpell(cap, false)
+        if id and name then
+          action = {
+            priority=6,mass=false,category=category,cap=cap,
+            spellID=id,spellName=name,rank=rank,icon=icon,
+            unit=member.unit,targetGUID=recipientGUID,targetName=member.name,
+            state=state,dead=member.dead,online=member.online,
+            source="assigned",aura=aura,
+          }
+        end
+      end
       rows[#rows+1] = {
         member=member,category=category,cap=cap,state=state,aura=aura,
         action=action,delivery="individual",
@@ -885,9 +897,7 @@ function CBC:UpdateCompact()
         and view.action.targetGUID == view.member.guid
         and view.action.unit
         and UnitGUID(view.action.unit) == view.member.guid
-      local rowAction = not inCombat and distanceState == "in-range"
-        and not view.member.dead and view.member.online ~= false
-        and actionMatchesTarget and view.action or nil
+      local rowAction = not inCombat and actionMatchesTarget and view.action or nil
       row.recipientGUID, row.category, row.action = view.member.guid, view.category, rowAction
       if inCombat then
         if row.secureOverlay then row.secureOverlay._cbcHasAction = false end
@@ -912,30 +922,15 @@ function CBC:UpdateCompact()
         if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
         row.status:SetText("OFFLINE  "..self.Categories[view.category].short)
         row.status:SetTextColor(0.55,0.55,0.55)
-        if inCombat and row.combatBlocker then
-          row.combatBlocker._cbcTitle = "Player offline"
-          row.combatBlocker._cbcDetail = "This individual buff cannot be cast while the player is offline."
-          row.combatBlocker:Show()
-        end
       elseif distanceState == "remote" then
         if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
         local remoteLabel = distanceDetail and distanceDetail ~= "" and distanceDetail or "VERY FAR"
         row.status:SetText("REMOTE  "..remoteLabel)
         row.status:SetTextColor(0.55,0.62,0.72)
-        if inCombat and row.combatBlocker then
-          row.combatBlocker._cbcTitle = "Player is very far away"
-          row.combatBlocker._cbcDetail = distanceDetail or "The player may be in another zone."
-          row.combatBlocker:Show()
-        end
       elseif distanceState == "out-of-range" then
         if row.icon.SetDesaturated then row.icon:SetDesaturated(true) end
         row.status:SetText("OUT OF RANGE  "..self.Categories[view.category].short)
         row.status:SetTextColor(1,0.55,0.18)
-        if inCombat and row.combatBlocker then
-          row.combatBlocker._cbcTitle = "Player is out of range"
-          row.combatBlocker._cbcDetail = "Move into buff range to enable this protected button."
-          row.combatBlocker:Show()
-        end
       else
         if row.icon.SetDesaturated then row.icon:SetDesaturated(false) end
         local duration = view.aura and self:FormatDuration(view.aura.expires) or ""
