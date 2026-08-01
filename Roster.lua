@@ -445,6 +445,11 @@ function CBC:RefreshRoster()
   for guid in pairs(self.providers) do
     if not seenProviders[guid] then self.providers[guid] = nil end
   end
+  for key in pairs(self.maxRawEffectCache or {}) do
+    if type(key) == "string" and not seenProviders[key] then
+      self.maxRawEffectCache[key] = nil
+    end
+  end
 end
 
 function CBC:GetGroupKey()

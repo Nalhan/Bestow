@@ -81,7 +81,7 @@ function CBC:GetRecipientStatWeights(specID, unit)
   local guid = unit and UnitGUID and UnitGUID(unit)
   if guid and guid == UnitGUID("player") then
     local weights = self:GetSpecStatWeights(specID)
-    return weights, profile, "local:" .. tostring(specID)
+    return weights, profile
   end
   local provider = guid and self.providers and self.providers[guid]
   if provider and provider.statWeightsAdvertised
@@ -89,11 +89,9 @@ function CBC:GetRecipientStatWeights(specID, unit)
     and provider.statWeightSourceCompatible
     and provider.effectiveStatWeights
   then
-    return provider.effectiveStatWeights, profile,
-      table.concat({"remote", guid, provider.statWeightRevision or 0, provider.statWeightHash or "-"}, ":")
+    return provider.effectiveStatWeights, profile
   end
-  local sourceHash = self.StatWeightSource and self.StatWeightSource.sha256 or "-"
-  return defaults, profile, "bundled:" .. tostring(specID) .. ":" .. sourceHash
+  return defaults, profile
 end
 
 function CBC:GetBisBeardStatWeights(specID)
@@ -201,22 +199,32 @@ function CBC:GetRawEffectUtility(specID, effect, unit)
 end
 
 function CBC:GetMaxRawEffectUtility(specID, unit)
-  local weights, _, weightSignature = self:GetRecipientStatWeights(specID, unit)
+  local weights = self:GetRecipientStatWeights(specID, unit)
   if not weights then return 0, false end
   local stats, exact = self:GetScoringStats(unit)
-  local signature = table.concat({
-    weightSignature or tostring(specID), stats.strength, stats.agility, stats.stamina,
-    stats.intellect, stats.spirit,
-  }, ":")
   self.maxRawEffectCache = self.maxRawEffectCache or {}
-  local cached = self.maxRawEffectCache[signature]
-  if cached then return cached, exact end
+  local cacheKey = unit and UnitGUID and UnitGUID(unit) or tonumber(specID)
+  local cached = self.maxRawEffectCache[cacheKey]
+  if cached
+    and cached.weights == weights
+    and cached.strength == stats.strength
+    and cached.agility == stats.agility
+    and cached.stamina == stats.stamina
+    and cached.intellect == stats.intellect
+    and cached.spirit == stats.spirit
+  then
+    return cached.value, exact
+  end
   local highest = 0
   for _, effect in pairs(self.EffectsBySpellID or {}) do
     local raw = CalculateRaw(weights, effect, stats)
     if raw and raw > highest then highest = raw end
   end
-  self.maxRawEffectCache[signature] = highest
+  self.maxRawEffectCache[cacheKey] = {
+    weights=weights,
+    strength=stats.strength,agility=stats.agility,stamina=stats.stamina,
+    intellect=stats.intellect,spirit=stats.spirit,value=highest,
+  }
   return highest, exact
 end
 
