@@ -240,6 +240,7 @@ function CBC:BuildDiagnosticText()
 end
 
 function CBC:CreateDiagnostics()
+  if self.diagnosticFrame then return end
   local frame=CreateFrame("Frame","BestowDiagnostics",UIParent)
   self.diagnosticFrame=frame
   frame:SetWidth(760); frame:SetHeight(520); frame:SetPoint("CENTER")
@@ -264,6 +265,7 @@ function CBC:CreateDiagnostics()
 end
 
 function CBC:ShowDiagnosticText(title, text)
+  if not self.diagnosticFrame then self:CreateDiagnostics() end
   local frame = self.diagnosticFrame
   frame.title:SetText(title)
   frame.edit:SetText(text)

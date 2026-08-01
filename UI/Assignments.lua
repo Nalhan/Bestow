@@ -140,7 +140,85 @@ function CBC:AnnounceGreaterAssignments()
   end)
 end
 
+local function CreateAssignmentRow(owner, content, rowIndex)
+  local row={cells={}}
+  row.label=content:CreateFontString(nil,"OVERLAY")
+  row.label:SetPoint("TOPLEFT",4,-(rowIndex-1)*ROW_H-5)
+  row.label:SetWidth(LABEL_W-8); row.label:SetHeight(ROW_H)
+  row.label:SetJustifyH("LEFT"); owner:ApplyFont(row.label,9,"")
+  for column,category in ipairs(owner.CategoryOrder) do
+    local cell=CreateFrame("Button",nil,content)
+    cell:SetWidth(CELL_W-2); cell:SetHeight(ROW_H-1)
+    cell:SetPoint("TOPLEFT",LABEL_W+(column-1)*CELL_W,-(rowIndex-1)*ROW_H)
+    owner.Pixel:Button(cell,0.43)
+    cell.category=category
+    cell.text=cell:CreateFontString(nil,"OVERLAY")
+    cell.text:SetPoint("TOPLEFT",2,0); cell.text:SetPoint("BOTTOMRIGHT",-43,0)
+    cell.text:SetJustifyH("CENTER"); owner:ApplyFont(cell.text,8,"")
+    cell.score=cell:CreateFontString(nil,"OVERLAY")
+    cell.score:SetPoint("TOPRIGHT",-2,0); cell.score:SetPoint("BOTTOMRIGHT",-2,0)
+    cell.score:SetWidth(40); cell.score:SetJustifyH("RIGHT"); owner:ApplyFont(cell.score,10,"OUTLINE")
+    cell:RegisterForClicks("LeftButtonUp","RightButtonUp")
+    cell:SetScript("OnClick",function(self,mouse)
+      if not self.recipientGUID then return end
+      if mouse=="RightButton" then CBC:ResetCellOverride(self.recipientGUID,self.category)
+      else CBC:OpenProviderMenu(self,self.category,self.recipientGUID,false) end
+    end)
+    cell:SetScript("OnEnter",function(self)
+      if not self.recipientGUID then return end
+      local assignment=CBC.assignment.cells[self.recipientGUID] and CBC.assignment.cells[self.recipientGUID][self.category]
+      local aura=CBC:GetCoverage(self.recipientGUID,self.category)
+      GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:SetText(CBC.Categories[self.category].label)
+      if assignment then
+        local provider=CBC.providers[assignment.providerGUID]
+        local cap=provider and provider.categories and provider.categories[self.category]
+        local recipient=CBC.rosterByGUID[self.recipientGUID]
+        local score,base,raw,bonus,exact
+        if cap then
+          score,base,raw,bonus,exact=
+            CBC:GetCapabilityWeightedScore(recipient,cap,assignment.delivery=="greater")
+        end
+        GameTooltip:AddLine("Assigned: "..(provider and provider.name or assignment.providerGUID).." ("..assignment.delivery..")",1,1,1)
+        if score then
+          GameTooltip:AddLine("Weighted value: "..score.."/100",0.65,0.8,1)
+          GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
+        end
+      else GameTooltip:AddLine("No coordinated provider",0.6,0.6,0.6) end
+      local recipient=CBC.rosterByGUID[self.recipientGUID]
+      if not assignment then
+        local score,base,raw,bonus,exact=CBC:GetBestAvailableWeightedScore(recipient,self.category)
+        if score then
+          GameTooltip:AddLine("Best available weighted value: "..score.."/100",0.65,0.8,1)
+          GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
+        end
+      end
+      local potential,base,raw,bonus,exact,family,spellID=
+        CBC:GetCategoryMaxPotentialWeightedScore(recipient,self.category)
+      if potential then
+        GameTooltip:AddLine("Maximum potential: "..potential.."/100 ("..tostring(family)..")",0.55,0.55,0.55)
+        GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Spell: "..tostring(spellID).."  Exact: "..tostring(exact),0.48,0.48,0.48)
+      end
+      if aura then GameTooltip:AddLine("Aura: "..aura.name.." | "..CBC:FormatDuration(aura.expires),0.42,0.68,0.92) end
+      GameTooltip:Show()
+    end)
+    cell:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    row.cells[column]=cell
+  end
+  return row
+end
+
+function CBC:EnsureAssignmentRows(count)
+  local frame=self.assignmentFrame
+  if not frame or not frame.content then return end
+  count=math.max(1,tonumber(count) or 1)
+  for rowIndex=#frame.rows+1,count do
+    frame.rows[rowIndex]=CreateAssignmentRow(self,frame.content,rowIndex)
+  end
+  frame.content:SetHeight(count*ROW_H)
+end
+
 function CBC:CreateAssignmentPanel()
+  if self.assignmentFrame then return end
   local frame = CreateFrame("Frame","BestowAssignments",UIParent)
   frame:SetWidth(LABEL_W + #self.CategoryOrder * CELL_W + 34)
   frame:SetHeight(570)
@@ -203,84 +281,19 @@ function CBC:CreateAssignmentPanel()
   end)
   local content=CreateFrame("Frame",nil,scroll)
   content:SetWidth(LABEL_W + #self.CategoryOrder*CELL_W)
-  content:SetHeight(40*ROW_H)
+  content:SetHeight(ROW_H)
   scroll:SetScrollChild(content)
   frame.content,frame.rows=content,{}
 
-  for rowIndex=1,40 do
-    local row={cells={}}
-    row.label=content:CreateFontString(nil,"OVERLAY")
-    row.label:SetPoint("TOPLEFT",4,-(rowIndex-1)*ROW_H-5)
-    row.label:SetWidth(LABEL_W-8); row.label:SetHeight(ROW_H)
-    row.label:SetJustifyH("LEFT"); self:ApplyFont(row.label,9,"")
-    for column,category in ipairs(self.CategoryOrder) do
-      local cell=CreateFrame("Button",nil,content)
-      cell:SetWidth(CELL_W-2); cell:SetHeight(ROW_H-1)
-      cell:SetPoint("TOPLEFT",LABEL_W+(column-1)*CELL_W,-(rowIndex-1)*ROW_H)
-      self.Pixel:Button(cell,0.43)
-      cell.category=category
-      cell.text=cell:CreateFontString(nil,"OVERLAY")
-      cell.text:SetPoint("TOPLEFT",2,0); cell.text:SetPoint("BOTTOMRIGHT",-43,0)
-      cell.text:SetJustifyH("CENTER"); self:ApplyFont(cell.text,8,"")
-      cell.score=cell:CreateFontString(nil,"OVERLAY")
-      cell.score:SetPoint("TOPRIGHT",-2,0); cell.score:SetPoint("BOTTOMRIGHT",-2,0)
-      cell.score:SetWidth(40); cell.score:SetJustifyH("RIGHT"); self:ApplyFont(cell.score,10,"OUTLINE")
-      cell:RegisterForClicks("LeftButtonUp","RightButtonUp")
-      cell:SetScript("OnClick",function(self,mouse)
-        if not self.recipientGUID then return end
-        if mouse=="RightButton" then CBC:ResetCellOverride(self.recipientGUID,self.category)
-        else CBC:OpenProviderMenu(self,self.category,self.recipientGUID,false) end
-      end)
-      cell:SetScript("OnEnter",function(self)
-        if not self.recipientGUID then return end
-        local assignment=CBC.assignment.cells[self.recipientGUID] and CBC.assignment.cells[self.recipientGUID][self.category]
-        local aura=CBC:GetCoverage(self.recipientGUID,self.category)
-        GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:SetText(CBC.Categories[self.category].label)
-        if assignment then
-          local provider=CBC.providers[assignment.providerGUID]
-          local cap=provider and provider.categories and provider.categories[self.category]
-          local recipient=CBC.rosterByGUID[self.recipientGUID]
-          local score,base,raw,bonus,exact
-          if cap then
-            score,base,raw,bonus,exact=
-              CBC:GetCapabilityWeightedScore(recipient,cap,assignment.delivery=="greater")
-          end
-          GameTooltip:AddLine("Assigned: "..(provider and provider.name or assignment.providerGUID).." ("..assignment.delivery..")",1,1,1)
-          if score then
-            GameTooltip:AddLine("Weighted value: "..score.."/100",0.65,0.8,1)
-            GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
-          end
-        else GameTooltip:AddLine("No coordinated provider",0.6,0.6,0.6) end
-        local recipient=CBC.rosterByGUID[self.recipientGUID]
-        if not assignment then
-          local score,base,raw,bonus,exact=CBC:GetBestAvailableWeightedScore(recipient,self.category)
-          if score then
-            GameTooltip:AddLine("Best available weighted value: "..score.."/100",0.65,0.8,1)
-            GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Exact: "..tostring(exact),0.65,0.65,0.65)
-          end
-        end
-        local potential,base,raw,bonus,exact,family,spellID=
-          CBC:GetCategoryMaxPotentialWeightedScore(recipient,self.category)
-        if potential then
-          GameTooltip:AddLine("Maximum potential: "..potential.."/100 ("..tostring(family)..")",0.55,0.55,0.55)
-          GameTooltip:AddLine("Base: "..base.."  Bonus: "..bonus.."  Raw: "..string.format("%.4f",raw).."  Spell: "..tostring(spellID).."  Exact: "..tostring(exact),0.48,0.48,0.48)
-        end
-        if aura then GameTooltip:AddLine("Aura: "..aura.name.." | "..CBC:FormatDuration(aura.expires),0.42,0.68,0.92) end
-        GameTooltip:Show()
-      end)
-      cell:SetScript("OnLeave",function() GameTooltip:Hide() end)
-      row.cells[column]=cell
-    end
-    frame.rows[rowIndex]=row
-  end
-
   self.assignmentDropdown=CreateFrame("Frame","BestowProviderMenu",UIParent,"UIDropDownMenuTemplate")
+  self:EnsureAssignmentRows(#self.roster)
   frame.ready = true
 end
 
 function CBC:UpdateAssignmentPanel()
   local frame=self.assignmentFrame
   if not frame or not frame.ready or not frame:IsShown() then return end
+  self:EnsureAssignmentRows(#self.roster)
   local providerByGreater=self.assignment.greaterByCategory or {}
   for column,category in ipairs(self.CategoryOrder) do
     local header=frame.headers[column]
@@ -341,8 +354,11 @@ end
 
 function CBC:ToggleAssignmentPanel()
   if not self.assignmentFrame or not self.assignmentFrame.ready then
-    self:Print("The assignment panel did not initialize.")
-    return
+    if InCombatLockdown and InCombatLockdown() then
+      self:Print("Open the assignment panel once out of combat before using it in combat.")
+      return
+    end
+    self:CreateAssignmentPanel()
   end
   if self.assignmentFrame:IsShown() then self.assignmentFrame:Hide()
   else self.assignmentFrame:Show(); self:UpdateAssignmentPanel() end

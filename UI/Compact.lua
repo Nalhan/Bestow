@@ -959,7 +959,5 @@ end
 
 function CBC:CreateUI()
   self:CreateCompact()
-  self:CreateAssignmentPanel()
-  self:CreateDiagnostics()
   self:CreateOptions()
 end

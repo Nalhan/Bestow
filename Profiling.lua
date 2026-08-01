@@ -141,6 +141,44 @@ local function AppendReasonCounts(lines, title, counts)
   end
 end
 
+local function CountKeys(values)
+  local count = 0
+  for _ in pairs(values or {}) do count = count + 1 end
+  return count
+end
+
+local function CountNested(values)
+  local count = 0
+  for _, children in pairs(values or {}) do
+    count = count + CountKeys(children)
+  end
+  return count
+end
+
+function CBC:AppendMemoryInventory(lines)
+  local compactRows = self.compactFrame and self.compactFrame.rows
+  local matrixRows = self.assignmentFrame and self.assignmentFrame.rows
+  lines[#lines+1] = format(
+    "UI pools: compact=%d matrix=%d matrixLoaded=%s pixelFrames=%d fontObjects=%d",
+    #(compactRows or {}), #(matrixRows or {}), tostring(self.assignmentFrame ~= nil),
+    CountKeys(self.pixelFrames), CountKeys(self.fontStrings)
+  )
+  lines[#lines+1] = format(
+    "Runtime tables: providers=%d roster=%d coverageUnits=%d coverageAuras=%d specCache=%d normalizationCache=%d",
+    CountKeys(self.providers), #(self.roster or {}), CountKeys(self.coverage),
+    CountNested(self.coverage), CountKeys(self.externalSpecCache),
+    CountKeys(self.maxRawEffectCache)
+  )
+  lines[#lines+1] = format(
+    "Session tables: headers=%d cells=%d headerVersions=%d cellVersions=%d providerOverrides=%d",
+    CountKeys(self.session and self.session.header),
+    CountNested(self.session and self.session.cells),
+    CountKeys(self.session and self.session.headerVersions),
+    CountNested(self.session and self.session.cellVersions),
+    CountNested(self.session and self.session.providerOverrides)
+  )
+end
+
 function CBC:BuildProfilerText()
   local enabled = self.profilerEnabled and "enabled" or "disabled"
   local data = self.profileData
@@ -171,6 +209,7 @@ function CBC:BuildProfilerText()
   if collectgarbage then
     lines[#lines+1] = format("Total Lua memory: %.1f KiB", collectgarbage("count") or 0)
   end
+  self:AppendMemoryInventory(lines)
 
   if not data then
     lines[#lines+1] = "No session samples. Use /bestow profile on."
