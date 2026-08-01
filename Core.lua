@@ -32,6 +32,8 @@ local defaults = {
   revealMissing = true,
   revealExpiring = true,
   showSpecs = true,
+  debugEnabled = false,
+  profilingEnabled = false,
   scale = 1.0,
   widthPx = 252,
   position = {"CENTER", 0, -180},
@@ -63,17 +65,37 @@ function CBC:Print(message)
   DEFAULT_CHAT_FRAME:AddMessage("|cff4db8ffBestow:|r " .. tostring(message))
 end
 
-function CBC:Debug(message)
+function CBC:Debug(message, ...)
+  if not self.db or not self.db.debugEnabled then return end
+  if select("#", ...) > 0 then message = string.format(message, ...) end
   self.diagnostics[#self.diagnostics + 1] = date("%H:%M:%S") .. " " .. tostring(message)
   if #self.diagnostics > 200 then table.remove(self.diagnostics, 1) end
 end
 
-function CBC:DebugAssignment(stage, message)
+function CBC:DebugAssignment(stage, message, ...)
+  if not self.db or not self.db.debugEnabled then return end
+  if select("#", ...) > 0 then message = string.format(message, ...) end
   local entries = self.assignmentDiagnostics
   entries[#entries + 1] = string.format(
     "%s %-8s %s", date("%H:%M:%S"), "[" .. tostring(stage) .. "]", tostring(message)
   )
   if #entries > 120 then table.remove(entries, 1) end
+end
+
+function CBC:SetDebugEnabled(enabled, silent)
+  enabled = enabled and true or false
+  if self.db then self.db.debugEnabled = enabled end
+  local check = self.optionsPanel and self.optionsPanel.checks
+    and self.optionsPanel.checks.debugEnabled
+  if check then check:SetChecked(enabled) end
+  if not enabled then
+    wipe(self.diagnostics)
+    wipe(self.assignmentDiagnostics)
+    self.lastSecureClick = nil
+  end
+  if not silent then
+    self:Print("Debug logging " .. (enabled and "enabled." or "disabled and cleared."))
+  end
 end
 
 function CBC:Normalize(value)
@@ -243,6 +265,7 @@ SlashCmdList.BESTOW = function(message)
   if command == "" or command == "help" then
     CBC:Print("/bestow assignments | config | dump | tooltips | rescan | reset | show | hide")
     CBC:Print("/bestow pref category essential|useful|marginal|none")
+    CBC:Print("/bestow debug on|off | profile on|off|reset|report")
   elseif command == "assignments" or command == "matrix" then
     if CBC.ToggleAssignmentPanel then CBC:ToggleAssignmentPanel() end
   elseif command == "config" or command == "options" then
@@ -267,7 +290,15 @@ SlashCmdList.BESTOW = function(message)
     CBC.db.enabled = false
     if CBC.compactFrame then CBC.compactFrame:Hide() end
   elseif command == "debug" then
-    CBC:Print("roster=" .. #CBC.roster .. " actions=" .. #CBC.actions)
+    local setting = string.lower(rest or "")
+    if setting == "on" or setting == "enable" then
+      CBC:SetDebugEnabled(true)
+    elseif setting == "off" or setting == "disable" then
+      CBC:SetDebugEnabled(false)
+    else
+      CBC:Print("Debug logging is " .. (CBC.db.debugEnabled and "enabled" or "disabled")
+        .. ". /bestow debug on|off")
+    end
   elseif command == "pref" then
     local category, tier = string.match(rest or "", "^(%S+)%s+(%S+)$")
     tier = tier and string.upper(string.sub(tier,1,1)) .. string.lower(string.sub(tier,2))

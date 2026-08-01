@@ -44,6 +44,7 @@ local function ConfigureSecureAction(button, action)
 end
 
 local function TraceSecureClick(button)
+  if not CBC.db or not CBC.db.debugEnabled then return end
   local action = button._cbcAction
   if not action then return end
   local visualRow = button._cbcVisualRow
@@ -68,6 +69,7 @@ local secureTraceFrame = CreateFrame("Frame")
 secureTraceFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
 secureTraceFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 secureTraceFrame:SetScript("OnEvent", function(_, event, ...)
+  if not CBC.db or not CBC.db.debugEnabled then return end
   local trace = CBC.lastSecureClick
   if not trace or GetTime()-trace.time > 2 then return end
   local values = {}

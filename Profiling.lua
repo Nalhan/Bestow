@@ -100,6 +100,9 @@ function CBC:EnableProfiler(silent)
   if self.profilerEnabled then return end
   self.profilerEnabled = true
   if self.db then self.db.profilingEnabled = true end
+  local check = self.optionsPanel and self.optionsPanel.checks
+    and self.optionsPanel.checks.profilingEnabled
+  if check then check:SetChecked(true) end
   self:ResetProfiler(true)
   for _, name in ipairs(PROFILE_TARGETS) do
     self:WrapProfileTarget(name)
@@ -117,7 +120,11 @@ function CBC:DisableProfiler(silent)
   end
   self.profileOriginals = {}
   self.profilerEnabled = nil
+  self.profileData = nil
   if self.db then self.db.profilingEnabled = false end
+  local check = self.optionsPanel and self.optionsPanel.checks
+    and self.optionsPanel.checks.profilingEnabled
+  if check then check:SetChecked(false) end
   if not silent then self:Print("Profiling disabled.") end
 end
 

@@ -26,15 +26,22 @@ local function SetVisible(widget, visible)
   if visible then widget:Show() else widget:Hide() end
 end
 
-local function AddCheck(panel, key, text, y)
+local function AddCheck(panel, key, text, y, x)
   local name = "BestowOption" .. key
   local check = CreateFrame("CheckButton", name, panel, "InterfaceOptionsCheckButtonTemplate")
-  check:SetPoint("TOPLEFT", 18, y)
+  check:SetPoint("TOPLEFT", x or 18, y)
   local label = _G[name .. "Text"]
   if label then CBC:ApplyFont(label, 11, ""); label:SetText(text) end
   check:SetScript("OnClick", function(self)
-    CBC.db[key] = self:GetChecked() and true or false
-    CBC:Rebuild("option " .. key)
+    local enabled = self:GetChecked() and true or false
+    if key == "debugEnabled" then
+      CBC:SetDebugEnabled(enabled)
+    elseif key == "profilingEnabled" then
+      if enabled then CBC:EnableProfiler() else CBC:DisableProfiler() end
+    else
+      CBC.db[key] = enabled
+      CBC:Rebuild("option " .. key)
+    end
   end)
   panel.checks[key] = check
   return check
@@ -138,6 +145,14 @@ function CBC:CreateOptions()
     end
   end)
   panel.threshold = threshold
+
+  local diagnosticsLabel = panel:CreateFontString(nil, "ARTWORK")
+  diagnosticsLabel:SetPoint("TOPLEFT", 300, -258)
+  diagnosticsLabel:SetTextColor(0.68, 0.68, 0.68)
+  self:ApplyFont(diagnosticsLabel, 9, "")
+  diagnosticsLabel:SetText("Diagnostics (disabled by default):")
+  AddCheck(panel, "debugEnabled", "Enable debug logging", -274, 300)
+  AddCheck(panel, "profilingEnabled", "Enable performance profiling", -298, 300)
 
   ---------------------------------------------------------
   -- Section 3: Appearance & Scale
