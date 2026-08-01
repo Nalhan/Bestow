@@ -11,6 +11,29 @@ local function BetterAura(candidate, current)
   return candidateLeft > currentLeft
 end
 
+local function RecycleAura(self, aura)
+  if not aura then return end
+  self.auraRecordPool = self.auraRecordPool or {}
+  self.auraRecordPool[#self.auraRecordPool+1] = aura
+end
+
+local function AcquireAura(self)
+  local pool = self.auraRecordPool
+  if pool and #pool > 0 then
+    local aura = pool[#pool]
+    pool[#pool] = nil
+    return aura
+  end
+  return {}
+end
+
+local function ClearCoverage(self, coverage)
+  for _, aura in pairs(coverage or {}) do
+    RecycleAura(self, aura)
+  end
+  if coverage then wipe(coverage) end
+end
+
 function CBC:ObserveProviderCapability(provider, match, spellID, reportedRank)
   if not provider or not provider.provisional or not spellID then return false end
   if provider.classToken ~= match.provider then return false end
@@ -45,8 +68,9 @@ end
 
 function CBC:ScanUnitAuras(member)
   self.coverage = self.coverage or {}
-  local unitCoverage = {}
+  local unitCoverage = self.coverage[member.guid] or {}
   self.coverage[member.guid] = unitCoverage
+  ClearCoverage(self, unitCoverage)
   local observedChanged = false
   for index=1,40 do
     local name, rank, icon, _, _, duration, expires, caster, _, _, spellID = UnitBuff(member.unit, index)
@@ -57,21 +81,24 @@ function CBC:ScanUnitAuras(member)
       local casterName = caster and self:FullName(caster)
       local reportedRank = tonumber(string.match(rank or "", "(%d+)"))
       for _, match in ipairs(matches) do
-        local aura = {
-          category=match.category,family=match.family,tier=match.tier,
-          form=match.form,rankIndex=reportedRank or match.rankIndex,
-          rankReported=reportedRank ~= nil,
-          providerToken=match.provider,name=name,rank=rank,icon=icon,
-          duration=duration or 0,expires=expires or 0,caster=caster,
-          casterGUID=casterGUID,casterName=casterName,spellID=spellID,
-        }
+        local aura = AcquireAura(self)
+        aura.category,aura.family,aura.tier=match.category,match.family,match.tier
+        aura.form,aura.rankIndex=match.form,reportedRank or match.rankIndex
+        aura.rankReported=reportedRank ~= nil
+        aura.providerToken,aura.name,aura.rank,aura.icon=match.provider,name,rank,icon
+        aura.duration,aura.expires,aura.caster=duration or 0,expires or 0,caster
+        aura.casterGUID,aura.casterName,aura.spellID=casterGUID,casterName,spellID
+        aura.score,aura.baseScore,aura.rawValue,aura.bonusPoints=nil,nil,nil,nil
         local effect = spellID and self:GetSpellEffect(spellID)
         if effect then
           aura.score, aura.baseScore, aura.rawValue, aura.bonusPoints =
             self:GetNormalizedEffectScore(member.specID, effect, member.unit, match.family, spellID)
         end
         if BetterAura(aura, unitCoverage[match.category]) then
+          RecycleAura(self, unitCoverage[match.category])
           unitCoverage[match.category] = aura
+        else
+          RecycleAura(self, aura)
         end
         local observedProvider = casterGUID and self.providers[casterGUID]
         if self:ObserveProviderCapability(observedProvider, match, spellID, reportedRank) then
@@ -85,17 +112,27 @@ end
 
 function CBC:ScanAuras()
   self.coverage = self.coverage or {}
-  wipe(self.coverage)
+  self.auraSeenScratch = self.auraSeenScratch or {}
+  local seen = self.auraSeenScratch
+  wipe(seen)
   local observedChanged = false
   for _, member in ipairs(self.roster) do
+    seen[member.guid] = true
     if self:ScanUnitAuras(member) then observedChanged = true end
+  end
+  for guid, unitCoverage in pairs(self.coverage) do
+    if not seen[guid] then
+      ClearCoverage(self, unitCoverage)
+      self.coverage[guid] = nil
+    end
   end
   if observedChanged then self:ScheduleRebuild("observed provisional provider", 0.05) end
 end
 
 function CBC:ScanDirtyAuras()
   local dirty = self.auraDirtyUnits
-  self.auraDirtyUnits = {}
+  self.auraDirtyUnits = self.auraDirtySpare or {}
+  self.auraDirtySpare = dirty
   if not dirty or not next(dirty) then
     self:ScanAuras()
     return
@@ -107,6 +144,7 @@ function CBC:ScanDirtyAuras()
       observedChanged = true
     end
   end
+  wipe(dirty)
   if observedChanged then self:ScheduleRebuild("observed provisional provider", 0.05) end
 end
 
