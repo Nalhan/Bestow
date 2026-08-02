@@ -38,6 +38,8 @@ local function AddCheck(panel, key, text, y, x)
       CBC:SetDebugEnabled(enabled)
     elseif key == "profilingEnabled" then
       if enabled then CBC:EnableProfiler() else CBC:DisableProfiler() end
+    elseif key == "overwriteTestingEnabled" then
+      CBC:SetOverwriteTestingEnabled(enabled)
     else
       CBC.db[key] = enabled
       CBC:Rebuild("option " .. key)
@@ -153,19 +155,20 @@ function CBC:CreateOptions()
   diagnosticsLabel:SetText("Diagnostics (disabled by default):")
   AddCheck(panel, "debugEnabled", "Enable debug logging", -274, 300)
   AddCheck(panel, "profilingEnabled", "Enable performance profiling", -298, 300)
+  AddCheck(panel, "overwriteTestingEnabled", "Enable buff-overwrite logging", -322, 300)
 
   ---------------------------------------------------------
   -- Section 3: Appearance & Scale
   ---------------------------------------------------------
-  CreateSectionHeader(panel, "Appearance & Scale", -326)
+  CreateSectionHeader(panel, "Appearance & Scale", -350)
 
   local fontLabel = panel:CreateFontString(nil, "ARTWORK")
-  fontLabel:SetPoint("TOPLEFT", 18, -350)
+  fontLabel:SetPoint("TOPLEFT", 18, -374)
   self:ApplyFont(fontLabel, 10, "")
   fontLabel:SetText("Global font family (LibSharedMedia):")
 
   local font = CreateFrame("Frame", "BestowFontMenu", panel, "UIDropDownMenuTemplate")
-  font:SetPoint("TOPLEFT", 4, -364)
+  font:SetPoint("TOPLEFT", 4, -388)
   UIDropDownMenu_SetWidth(font, 220)
   local fontText = _G[font:GetName() .. "Text"]
   if fontText then self:ApplyFont(fontText, 10, "") end
@@ -193,7 +196,7 @@ function CBC:CreateOptions()
   panel.font = font
 
   local scaleSlider = CreateFrame("Slider", "BestowScaleSlider", panel, "OptionsSliderTemplate")
-  scaleSlider:SetPoint("TOPLEFT", 22, -412)
+  scaleSlider:SetPoint("TOPLEFT", 22, -436)
   scaleSlider:SetWidth(200); scaleSlider:SetHeight(16)
   scaleSlider:SetMinMaxValues(0.50, 1.50); scaleSlider:SetValueStep(0.05)
   _G[scaleSlider:GetName().."Low"]:SetText("50%")
@@ -212,7 +215,7 @@ function CBC:CreateOptions()
   panel.scaleSlider = scaleSlider
 
   local widthSlider = CreateFrame("Slider", "BestowWidthSlider", panel, "OptionsSliderTemplate")
-  widthSlider:SetPoint("TOPLEFT", 244, -412)
+  widthSlider:SetPoint("TOPLEFT", 244, -436)
   widthSlider:SetWidth(200); widthSlider:SetHeight(16)
   widthSlider:SetMinMaxValues(180, 400); widthSlider:SetValueStep(5)
   _G[widthSlider:GetName().."Low"]:SetText("180px")
@@ -233,17 +236,17 @@ function CBC:CreateOptions()
   ---------------------------------------------------------
   -- Section 4: Stat Weights & Shortcuts
   ---------------------------------------------------------
-  CreateSectionHeader(panel, "Stat Weights & Shortcuts", -454)
+  CreateSectionHeader(panel, "Stat Weights & Shortcuts", -478)
 
   local weightsHint = panel:CreateFontString(nil, "ARTWORK")
-  weightsHint:SetPoint("TOPLEFT", 18, -478)
+  weightsHint:SetPoint("TOPLEFT", 18, -502)
   weightsHint:SetTextColor(0.68, 0.68, 0.68)
   self:ApplyFont(weightsHint, 9, "")
   weightsHint:SetText("Bestow scores spell utility using BisBeard profiles for all 70 Conquest of Azeroth specs.")
 
   local weightsButton = CreateFrame("Button", nil, panel)
   weightsButton:SetWidth(180); weightsButton:SetHeight(22)
-  weightsButton:SetPoint("TOPLEFT", 18, -498)
+  weightsButton:SetPoint("TOPLEFT", 18, -522)
   weightsButton:SetText("Edit Current Spec Weights")
   weightsButton:SetNormalFontObject(GameFontNormalSmall)
   self.Pixel:Button(weightsButton, 0.50)
@@ -251,7 +254,7 @@ function CBC:CreateOptions()
 
   local matrixButton = CreateFrame("Button", nil, panel)
   matrixButton:SetWidth(160); matrixButton:SetHeight(22)
-  matrixButton:SetPoint("TOPLEFT", 206, -498)
+  matrixButton:SetPoint("TOPLEFT", 206, -522)
   matrixButton:SetText("Assignment Matrix (A)")
   matrixButton:SetNormalFontObject(GameFontNormalSmall)
   self.Pixel:Button(matrixButton, 0.50)
@@ -259,7 +262,7 @@ function CBC:CreateOptions()
 
   local diagButton = CreateFrame("Button", nil, panel)
   diagButton:SetWidth(150); diagButton:SetHeight(22)
-  diagButton:SetPoint("TOPLEFT", 374, -498)
+  diagButton:SetPoint("TOPLEFT", 374, -522)
   diagButton:SetText("Diagnostics Dump (D)")
   diagButton:SetNormalFontObject(GameFontNormalSmall)
   self.Pixel:Button(diagButton, 0.50)
@@ -273,7 +276,13 @@ function CBC:CreateOptions()
     self.scaleSlider:SetValue(CBC.db and CBC.db.scale or 1.0)
     self.widthSlider:SetValue(CBC.db and CBC.db.widthPx or 252)
     self.threshold:SetValue(CBC.db.individualAssignmentThreshold)
-    for key, check in pairs(self.checks) do check:SetChecked(CBC.db[key]) end
+    for key, check in pairs(self.checks) do
+      if key == "overwriteTestingEnabled" then
+        check:SetChecked(CBC:GetOverwriteTestingState().enabled)
+      else
+        check:SetChecked(CBC.db[key])
+      end
+    end
   end)
 
   InterfaceOptions_AddCategory(panel)

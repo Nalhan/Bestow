@@ -247,11 +247,26 @@ function CBC:BuildOverwriteTestingReport()
   return table.concat(lines, "\n")
 end
 
-function CBC:SetOverwriteTestingEnabled(enabled)
+function CBC:SetOverwriteTestingEnabled(enabled, silent)
   local state = self:GetOverwriteTestingState()
   state.enabled = enabled == true
-  self:SeedOverwriteSnapshots()
-  self:Print("Buff overwrite recorder "..(state.enabled and "enabled" or "disabled")..".")
+  local check = self.optionsPanel and self.optionsPanel.checks
+    and self.optionsPanel.checks.overwriteTestingEnabled
+  if check then check:SetChecked(state.enabled) end
+  if self.overwriteEventFrame then
+    if state.enabled then self.overwriteEventFrame:RegisterEvent("UNIT_AURA")
+    else self.overwriteEventFrame:UnregisterEvent("UNIT_AURA") end
+  end
+  if state.enabled then
+    self:SeedOverwriteSnapshots()
+  else
+    self.overwriteSnapshots = nil
+    self.overwriteRecent = nil
+    self.overwriteTransitionTimes = nil
+  end
+  if not silent then
+    self:Print("Buff overwrite recorder "..(state.enabled and "enabled" or "disabled")..".")
+  end
 end
 
 function CBC:ClearOverwriteTesting()
@@ -284,13 +299,12 @@ end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:RegisterEvent("UNIT_AURA")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+CBC.overwriteEventFrame = eventFrame
 eventFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
     if ... == CBC.name and CBC.db then
-      CBC:GetOverwriteTestingState()
-      CBC:SeedOverwriteSnapshots()
+      CBC:SetOverwriteTestingEnabled(CBC:GetOverwriteTestingState().enabled, true)
     end
   elseif event == "UNIT_AURA" then
     if CBC.db then CBC:ObserveOverwriteAuras(...) end
